@@ -10,9 +10,9 @@ import (
 )
 
 type Stock_Key_Stats struct {
-	Name            string  `json:"name"`
+	Name            string  `json:"stock_name"`
 	Price           float32 `json:"price"`
-	LastClose       float32 `json:"last_close"`
+	PreviousClose   float32 `json:"previous_close"`
 	Change          float32 `json:"change"`
 	ChangePercent   float32 `json:"changepercent"`
 	DayRange        string  `json:"day_range"`
@@ -26,12 +26,10 @@ type Stock_Key_Stats struct {
 func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock_Key_Stats {
 	c_time := time.Now()
 
-	url := fmt.Sprintf("https://www.google.com/finance/quote/%s:%s", stock_name, index)
+	url := fmt.Sprintf("https://www.google.com/finance/quote/%s:%s", strings.ToUpper(stock_name), strings.ToUpper(index))
 
 	var name, dayRange, yearRange, volume, marketCap, primaryExchange string
-	var price, lastClose, peRatio float32
-
-	collector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+	var price, previousClose, peRatio float32
 
 	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.VfPpkd-WsjYwc.VfPpkd-WsjYwc-OWXEXe-INsAgc.KC1dQ.Usd1Ac.AaN0Dd.QZMA8b > c-wiz > div > div:nth-child(1) > div > div.rPF6Lc > div:nth-child(1) > h1", func(element *colly.HTMLElement) {
 		name = element.Text
@@ -40,7 +38,7 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.Gfxi4 > div:nth-child(2) > div.eYanAe > div:nth-child(2) > div.P6K39c", func(element *colly.HTMLElement) {
 		text := strings.ReplaceAll(element.Text, ",", "")
 		value, _ := strconv.ParseFloat(string([]rune(text)[1:]), 32)
-		lastClose = float32(value)
+		previousClose = float32(value)
 	})
 
 	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.VfPpkd-WsjYwc.VfPpkd-WsjYwc-OWXEXe-INsAgc.KC1dQ.Usd1Ac.AaN0Dd.QZMA8b > c-wiz > div > div:nth-child(1) > div > div.rPF6Lc > div:nth-child(1) > div > div:nth-child(1) > div > span > div > div", func(element *colly.HTMLElement) {
@@ -82,9 +80,9 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 	stock := Stock_Key_Stats{
 		Name:            name,
 		Price:           price,
-		LastClose:       lastClose,
-		Change:          price - lastClose,
-		ChangePercent:   (((price - lastClose) / lastClose) * 100),
+		PreviousClose:   previousClose,
+		Change:          price - previousClose,
+		ChangePercent:   (((price - previousClose) / previousClose) * 100),
 		DayRange:        dayRange,
 		YearRange:       yearRange,
 		MarketCap:       marketCap,
