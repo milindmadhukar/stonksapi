@@ -39,5 +39,5 @@ func main() {
 
 	r.HandleFunc("/{stock_name}:{stock_index}", getBooks).Methods("GET")
 	fmt.Println("Listening...")
-	log.Fatal(http.ListenAndServe(":8000", r))
+	log.Fatal(http.ListenAndServe(":5500", r))
 }
