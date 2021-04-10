@@ -11,15 +11,15 @@ import (
 
 type Stock_Key_Stats struct {
 	Name            string  `json:"name"`
-	Price           float64 `json:"price"`
-	LastClose       float64 `json:"last_close"`
-	Change          float64 `json:"change"`
-	ChangePercent   float64 `json:"changepercent"`
+	Price           float32 `json:"price"`
+	LastClose       float32 `json:"last_close"`
+	Change          float32 `json:"change"`
+	ChangePercent   float32 `json:"changepercent"`
 	DayRange        string  `json:"day_range"`
 	YearRange       string  `json:"year_range"`
 	Volume          string  `json:"volume"`
 	MarketCap       string  `json:"market_cap"`
-	PERatio         float64 `json:"pe_ratio"`
+	PERatio         float32 `json:"pe_ratio"`
 	PrimaryExchange string  `json:"primary_exchange"`
 }
 
@@ -29,7 +29,7 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 	url := fmt.Sprintf("https://www.google.com/finance/quote/%s:%s", stock_name, index)
 
 	var name, dayRange, yearRange, volume, marketCap, primaryExchange string
-	var price, lastClose, peRatio float64
+	var price, lastClose, peRatio float32
 
 	collector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
 
@@ -39,12 +39,14 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 
 	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.Gfxi4 > div:nth-child(2) > div.eYanAe > div:nth-child(2) > div.P6K39c", func(element *colly.HTMLElement) {
 		text := strings.ReplaceAll(element.Text, ",", "")
-		lastClose, _ = strconv.ParseFloat(string([]rune(text)[1:]), 64)
+		value, _ := strconv.ParseFloat(string([]rune(text)[1:]), 32)
+		lastClose = float32(value)
 	})
 
 	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.VfPpkd-WsjYwc.VfPpkd-WsjYwc-OWXEXe-INsAgc.KC1dQ.Usd1Ac.AaN0Dd.QZMA8b > c-wiz > div > div:nth-child(1) > div > div.rPF6Lc > div:nth-child(1) > div > div:nth-child(1) > div > span > div > div", func(element *colly.HTMLElement) {
 		text := strings.ReplaceAll(element.Text, ",", "")
-		price, _ = strconv.ParseFloat(string([]rune(text)[1:]), 64)
+		value, _ := strconv.ParseFloat(string([]rune(text)[1:]), 32)
+		price = float32(value)
 	})
 
 	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.Gfxi4 > div:nth-child(2) > div.eYanAe > div:nth-child(3) > div.P6K39c", func(element *colly.HTMLElement) {
@@ -55,7 +57,7 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 		yearRange = element.Text
 	})
 
-	for ctr := 5; ctr <= 9; ctr++ {
+	for ctr := 5; ctr <= 12; ctr++ {
 
 		collector.OnHTML(fmt.Sprintf("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.Gfxi4 > div:nth-child(2) > div.eYanAe > div:nth-child(%d)", ctr), func(element *colly.HTMLElement) {
 			txt := element.ChildText(".iYuiXc")
@@ -63,7 +65,8 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 			if txt == "Volume" {
 				volume = contents
 			} else if txt == "P/E ratio" {
-				peRatio, _ = strconv.ParseFloat(strings.ReplaceAll(contents, ",", ""), 64)
+				value, _ := strconv.ParseFloat(strings.ReplaceAll(contents, ",", ""), 32)
+				peRatio = float32(value)
 			} else if txt == "Primary exchange" {
 				primaryExchange = contents
 			} else if txt == "Market cap" {
