@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/gorilla/mux"
@@ -39,5 +40,5 @@ func main() {
 
 	r.HandleFunc("/{stock_name}:{stock_index}", getBooks).Methods("GET")
 	fmt.Println("Listening...")
-	log.Fatal(http.ListenAndServe(":5500", r))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), r))
 }
