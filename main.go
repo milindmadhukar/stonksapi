@@ -56,7 +56,7 @@ func main() {
 	r := mux.NewRouter()
 
 	// Remove before pushing
-	os.Setenv("PORT", "8000")
+	// os.Setenv("PORT", "8000")
 
 	//Creating Route Handlers
 
