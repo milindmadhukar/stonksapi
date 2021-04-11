@@ -13,7 +13,6 @@ import (
 
 var collector *colly.Collector
 
-//Get all books
 func getStockStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
@@ -21,6 +20,15 @@ func getStockStats(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "    ")
 	enc.Encode(*stock_data)
+}
+
+func getStockNews(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	stock_news := Get_Stock_News(collector, params["stock_name"], params["stock_index"])
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "    ")
+	enc.Encode(*stock_news)
 }
 
 func getCryptoData(w http.ResponseWriter, r *http.Request) {
@@ -48,11 +56,12 @@ func main() {
 	r := mux.NewRouter()
 
 	// Remove before pushing
-	// os.Setenv("PORT", "8000")
+	os.Setenv("PORT", "8000")
 
 	//Creating Route Handlers
 
 	r.HandleFunc("/stocks/{stock_name}:{stock_index}", getStockStats).Methods("GET")
+	r.HandleFunc("/stocks/news/{stock_name}:{stock_index}", getStockNews).Methods("GET")
 	r.HandleFunc("/crypto/{crypto_name}:{crypto_currency}", getCryptoData).Methods("GET")
 	fmt.Println("Listening on the port :", os.Getenv("PORT"))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), r))

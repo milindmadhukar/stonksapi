@@ -23,6 +23,13 @@ type Stock_Key_Stats struct {
 	PrimaryExchange string  `json:"primary_exchange"`
 }
 
+type Stock_News struct {
+	Title          string `json:"title"`
+	Source         string `json:"source"`
+	ArticleLink    string `json:"article_link"`
+	Thumbnail_Link string `json:"thumbnail_link"`
+}
+
 func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock_Key_Stats {
 	c_time := time.Now()
 
@@ -94,4 +101,32 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 	fmt.Println(time.Since(c_time))
 
 	return &stock
+}
+
+func Get_Stock_News(collector *colly.Collector, stock_name, index string) *[]Stock_News {
+
+	url := fmt.Sprintf("https://www.google.com/finance/quote/%s:%s", strings.ToUpper(stock_name), strings.ToUpper(index))
+
+	var title, source, articleLink, thumbnailLink string
+	allNews := make([]Stock_News, 0)
+
+	collector.OnHTML("#yDmH0d > c-wiz > div > div.e1AOyf > main > div.Gfxi4 > div.D6ciZd", func(element *colly.HTMLElement) {
+		element.ForEach(".yY3Lee", func(_ int, div_element *colly.HTMLElement) {
+			title = div_element.ChildText(".AoCdqe")
+			source = div_element.ChildText(".sfyJob")
+			articleLink = div_element.ChildAttr("div.z4rs2b > a:nth-child(1)", "href")
+			thumbnailLink = div_element.ChildAttr("img.PgYz9d", "src")
+
+			allNews = append(allNews, Stock_News{Title: title,
+				Source:         source,
+				ArticleLink:    articleLink,
+				Thumbnail_Link: thumbnailLink})
+		})
+	})
+
+	collector.Visit(url)
+
+	collector.Wait()
+
+	return &allNews
 }

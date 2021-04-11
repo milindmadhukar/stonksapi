@@ -18,3 +18,5 @@
 cached_files
 
 .env
+
+**.html

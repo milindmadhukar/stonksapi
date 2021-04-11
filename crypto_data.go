@@ -18,6 +18,13 @@ type Crypto_Key_Stats struct {
 	ChangePercent float32 `json:"change_percent"`
 }
 
+type Crypto_News struct {
+	Title          string `json:"title"`
+	Source         string `json:"source"`
+	ArticleLink    string `json:"article_link"`
+	Thumbnail_Link string `json:"thumbnail_link"`
+}
+
 func Get_Crypto_Data(collector *colly.Collector, crypto_name, crypto_currency string) *Crypto_Key_Stats {
 	c_time := time.Now()
 
@@ -44,14 +51,11 @@ func Get_Crypto_Data(collector *colly.Collector, crypto_name, crypto_currency st
 		text := strings.ReplaceAll(element.Text, ",", "")
 		value, _ := strconv.ParseFloat(text, 32)
 		price = float32(value)
-		fmt.Println("Price", price)
 	})
 
 	collector.Visit(url)
 
 	collector.Wait()
-
-	fmt.Println(name, description, previousClose, price)
 
 	crypto := Crypto_Key_Stats{
 		Name:          name,
