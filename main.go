@@ -36,6 +36,9 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Get("/", func (w http.ResponseWriter, r *http.Request){
+		w.Write([]byte("Stonks API!"))
+	})
 	r.Get("/stocks/{stock_name}:{stock_index}", getStockStats)
 	r.Get("/stocks/news/{stock_name}:{stock_index}", getStockNews)
 	r.Get("/crypto/{crypto_name}:{crypto_currency}", getCryptoData)

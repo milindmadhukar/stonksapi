@@ -9,24 +9,24 @@ import (
 )
 
 type Stock_Key_Stats struct {
-	Name            string  `json:"stock_name,omitempty"`
+	Name            string  `json:"stockName,omitempty"`
 	Price           float32 `json:"price,omitempty"`
-	PreviousClose   float32 `json:"previous_close,omitempty"`
+	PreviousClose   float32 `json:"previousClose,omitempty"`
 	Change          float32 `json:"change,omitempty"`
-	ChangePercent   float32 `json:"changepercent,omitempty"`
-	DayRange        string  `json:"day_range,omitempty"`
-	YearRange       string  `json:"year_range,omitempty"`
+	ChangePercent   float32 `json:"changePercent,omitempty"`
+	DayRange        string  `json:"dayRange,omitempty"`
+	YearRange       string  `json:"yearRange,omitempty"`
 	Volume          string  `json:"volume,omitempty"`
-	MarketCap       string  `json:"market_cap,omitempty"`
-	PERatio         float32 `json:"pe_ratio,omitempty"`
-	PrimaryExchange string  `json:"primary_exchange,omitempty"`
+	MarketCap       string  `json:"marketCap,omitempty"`
+	PERatio         float32 `json:"peRatio,omitempty"`
+	PrimaryExchange string  `json:"primaryExchange,omitempty"`
 }
 
 type Stock_News struct {
 	Title          string `json:"title,omitempty"`
 	Source         string `json:"source,omitempty"`
-	ArticleLink    string `json:"article_link,omitempty"`
-	Thumbnail_Link string `json:"thumbnail_link,omitempty"`
+	ArticleLink    string `json:"articleLink,omitempty"`
+	Thumbnail_Link string `json:"thumbnailLink,omitempty"`
 }
 
 func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock_Key_Stats {

@@ -9,18 +9,18 @@ import (
 )
 
 type Crypto_Key_Stats struct {
-	Name          string  `json:"crypto_name,omitempty"`
+	Name          string  `json:"cryptoName,omitempty"`
 	Price         float32 `json:"price,omitempty"`
-	PreviousClose float32 `json:"previous_close,omitempty"`
+	PreviousClose float32 `json:"previousClose,omitempty"`
 	Change        float32 `json:"change,omitempty"`
-	ChangePercent float32 `json:"change_percent,omitempty"`
+	ChangePercent float32 `json:"changePercent,omitempty"`
 }
 
 type Crypto_News struct {
 	Title          string `json:"title,omitempty"`
 	Source         string `json:"source,omitempty"`
-	ArticleLink    string `json:"article_link,omitempty"`
-	Thumbnail_Link string `json:"thumbnail_link,omitempty"`
+	ArticleLink    string `json:"articleLink,omitempty"`
+	Thumbnail_Link string `json:"thumbnailLink,omitempty"`
 }
 
 func Get_Crypto_Data(collector *colly.Collector, crypto_name, crypto_currency string) *Crypto_Key_Stats {
