@@ -6,6 +6,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.6.1 // indirect
 	github.com/antchfx/xmlquery v1.3.5 // indirect
 	github.com/go-chi/chi/v5 v5.0.4
+	github.com/go-chi/cors v1.2.0
+	github.com/go-chi/httprate v0.5.1
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/joho/godotenv v1.3.0
 	github.com/temoto/robotstxt v1.1.2 // indirect
