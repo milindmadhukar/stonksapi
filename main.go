@@ -25,7 +25,7 @@ func main() {
 	}
 
 	collector = colly.NewCollector(
-		colly.AllowedDomains("google.com", "www.google.com"),
+		colly.AllowedDomains("google.com", "www.google.com", "finance.google.com"),
 		colly.MaxDepth(2),
 		colly.Async(true),
 		colly.AllowURLRevisit(),
@@ -36,11 +36,11 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Get("/", func (w http.ResponseWriter, r *http.Request){
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Stonks API!"))
 	})
-	r.Get("/stocks/{stock_name}:{stock_index}", getStockStats)
-	r.Get("/stocks/news/{stock_name}:{stock_index}", getStockNews)
+	r.Get("/stocks/{stock_query}", getStockStats)
+	r.Get("/stocks/news/{stock_query}", getStockNews)
 	r.Get("/crypto/{crypto_name}:{crypto_currency}", getCryptoData)
 
 	port := os.Getenv("PORT")
@@ -52,11 +52,10 @@ func main() {
 
 func getStockStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	stock_data := Get_Stock_Data(collector, chi.URLParam(r, "stock_name"), chi.URLParam(r, "stock_index"))
-	log.Println(stock_data)
+	stock_data := Get_Stock_Data(collector, chi.URLParam(r, "stock_query"))
 	if stock_data.Name == "" {
 		w.WriteHeader(404)
-		w.Write([]byte(fmt.Sprintf("No stock data found for %s:%s", chi.URLParam(r, "stock_name"), chi.URLParam(r, "stock_index"))))
+		w.Write([]byte(fmt.Sprintf("No stock data found for the query '%s.'", chi.URLParam(r, "stock_query"))))
 		return
 
 	}
@@ -69,11 +68,11 @@ func getStockStats(w http.ResponseWriter, r *http.Request) {
 func getStockNews(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	stock_news := Get_Stock_News(collector, chi.URLParam(r, "stock_name"), chi.URLParam(r, "stock_index"))
+	stock_news := Get_Stock_News(collector, chi.URLParam(r, "stock_query"))
 
 	if len(*stock_news) == 0 {
 		w.WriteHeader(404)
-		w.Write([]byte(fmt.Sprintf("No news found for %s:%s", chi.URLParam(r, "stock_name"), chi.URLParam(r, "stock_index"))))
+		w.Write([]byte(fmt.Sprintf("No news found for '%s'", chi.URLParam(r, "stock_query"))))
 		return
 	}
 

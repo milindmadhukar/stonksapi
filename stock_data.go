@@ -29,9 +29,9 @@ type Stock_News struct {
 	Thumbnail_Link string `json:"thumbnailLink,omitempty"`
 }
 
-func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock_Key_Stats {
+func Get_Stock_Data(collector *colly.Collector, stock_query string) *Stock_Key_Stats {
 
-	url := fmt.Sprintf("https://www.google.com/finance/quote/%s:%s", stock_name, index)
+	url := fmt.Sprintf("https://finance.google.com/finance?q=%s", stock_query)
 
 	var name, dayRange, yearRange, volume, marketCap, primaryExchange string
 	var price, previousClose, peRatio float32
@@ -103,9 +103,9 @@ func Get_Stock_Data(collector *colly.Collector, stock_name, index string) *Stock
 	return &stock
 }
 
-func Get_Stock_News(collector *colly.Collector, stock_name, index string) *[]Stock_News {
+func Get_Stock_News(collector *colly.Collector, stock_query string) *[]Stock_News {
 
-	url := fmt.Sprintf("https://www.google.com/finance/quote/%s:%s", strings.ToUpper(stock_name), strings.ToUpper(index))
+	url := fmt.Sprintf("https://finance.google.com/finance?q=%s", stock_query)
 
 	var title, source, articleLink, thumbnailLink string
 	allNews := make([]Stock_News, 0)
