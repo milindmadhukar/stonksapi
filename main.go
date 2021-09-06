@@ -19,7 +19,7 @@ func main() {
 
 	err := godotenv.Load(".env")
 
-	if err != nil && os.Getenv("PORT") == nil {
+	if err != nil && os.Getenv("PORT") == "" {
 		log.Fatal("Could not load the .env file.")
 		return
 	}
