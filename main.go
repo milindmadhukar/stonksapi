@@ -21,11 +21,7 @@ var collector *colly.Collector
 
 func main() {
 	// Loading the env file.
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		log.Fatal("Could not load the .env file.")
-	}
+	godotenv.Load(".env")
 
 	port := os.Getenv("PORT")
 
