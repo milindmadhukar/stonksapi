@@ -32,7 +32,7 @@ PORT = 8000
 
 **Request url :** `/stocks/tesla` <br>
 **Response :** 
-```
+```json
 {
     "stockName": "Tesla Inc",
     "price": 733.57,
@@ -50,7 +50,7 @@ PORT = 8000
 
 **Request url :** `/stocks/news/apple` <br>
 **Response :** 
-```
+```json
 [
     {
         "title": "10 Reddit YOLO Stocks That Are Losing Ground",
@@ -93,7 +93,7 @@ PORT = 8000
 
 **Request url :** `/crypto/btc:usd` <br>
 **Response :** 
-```
+```json
 {
     "crypto_name": "BTC / USD",
     "price": 51680.1,
