@@ -38,7 +38,7 @@ func Get_Stock_Data(collector *colly.Collector, stock_query string) *Stock_Key_S
 
 	collector.Visit(url)
 
-	collector.OnHTML("h1.zzDege", func(element *colly.HTMLElement) {
+	collector.OnHTML("div.zzDege", func(element *colly.HTMLElement) {
 		name = element.Text
 	})
 
