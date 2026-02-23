@@ -1,0 +1,313 @@
+@import "tailwindcss";
+
+/* PWA native feel */
+html {
+  overflow-y: scroll;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  /* Safe area insets for notched devices */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Prevent text selection on interactive elements */
+button,
+[draggable="true"],
+.drag-handle,
+.view-toggle-btn,
+.index-card {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@theme {
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code",
+    ui-monospace, monospace;
+
+  --color-surface-0: #09090b;
+  --color-surface-1: #111113;
+  --color-surface-2: #18181b;
+  --color-surface-3: #1e1e22;
+  --color-border: #27272a;
+  --color-border-hover: #3f3f46;
+  --color-muted: #71717a;
+  --color-subtle: #a1a1aa;
+  --color-foreground: #fafafa;
+
+  --color-up: #22c55e;
+  --color-up-muted: #166534;
+  --color-down: #ef4444;
+  --color-down-muted: #991b1b;
+
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-muted: #312e81;
+
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-flash-border: flash-border 0.6s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flash-border {
+  0% {
+    border-color: var(--color-up);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-up) 25%, transparent);
+  }
+  100% {
+    border-color: var(--color-border);
+    box-shadow: none;
+  }
+}
+
+@keyframes flash-border-down {
+  0% {
+    border-color: var(--color-down);
+    box-shadow: 0 0 12px
+      color-mix(in srgb, var(--color-down) 25%, transparent);
+  }
+  100% {
+    border-color: var(--color-border);
+    box-shadow: none;
+  }
+}
+
+@keyframes price-flash-up {
+  0% {
+    color: var(--color-up);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-up) 40%, transparent);
+  }
+  100% {
+    color: var(--color-foreground);
+    text-shadow: none;
+  }
+}
+
+@keyframes price-flash-down {
+  0% {
+    color: var(--color-down);
+    text-shadow: 0 0 8px
+      color-mix(in srgb, var(--color-down) 40%, transparent);
+  }
+  100% {
+    color: var(--color-foreground);
+    text-shadow: none;
+  }
+}
+
+@keyframes tick-arrow {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes tick-arrow-down {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Drag and drop */
+.card-dragging {
+  opacity: 0.4;
+  border-style: dashed !important;
+}
+
+.card-drag-over {
+  border-color: var(--color-accent) !important;
+  background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface-1));
+}
+
+/* List row drag and drop */
+.row-dragging {
+  opacity: 0.4;
+}
+
+.row-drag-over {
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface-1)) !important;
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.list-row {
+  transition: background-color 0.15s ease;
+}
+
+/* List view grid layout — desktop */
+.list-header,
+.list-grid {
+  grid-template-columns: minmax(100px, 1fr) minmax(80px, 1.5fr) auto auto auto 2.5rem;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .list-header,
+  .list-grid {
+    grid-template-columns: minmax(100px, 1fr) minmax(80px, 1.5fr) auto auto auto auto 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .list-header,
+  .list-grid {
+    grid-template-columns: minmax(100px, 1fr) minmax(80px, 1.5fr) auto auto auto auto auto auto 2.5rem;
+  }
+}
+
+/* View toggle button */
+.view-toggle-btn {
+  color: var(--color-muted);
+}
+
+.view-toggle-btn.active {
+  background: var(--color-surface-3);
+  color: var(--color-foreground);
+}
+
+.view-toggle-btn:hover:not(.active) {
+  color: var(--color-subtle);
+}
+
+/* List view row flash */
+.list-flash-up {
+  animation: list-row-flash-up 0.8s ease-out;
+}
+
+.list-flash-down {
+  animation: list-row-flash-down 0.8s ease-out;
+}
+
+@keyframes list-row-flash-up {
+  0% {
+    background: color-mix(in srgb, var(--color-up) 12%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes list-row-flash-down {
+  0% {
+    background: color-mix(in srgb, var(--color-down) 12%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* Select dropdown styling */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2371717a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.4rem center;
+  background-repeat: no-repeat;
+  background-size: 1.2em 1.2em;
+  padding-right: 2rem;
+}
+
+select option {
+  background: var(--color-surface-1);
+  color: var(--color-foreground);
+}
+
+/* Search dropdown scrollbar */
+#search-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+#search-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#search-dropdown::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+#search-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Indices strip scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* iOS zoom prevention: inputs must be >= 16px to avoid auto-zoom on focus */
+@media screen and (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
