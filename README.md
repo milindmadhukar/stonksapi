@@ -4,8 +4,10 @@ A WIP  API which scrapes [Google Finance](https://www.google.com/finance) to pro
 
 
 ## 💻 Endpoints
+1. `/stocks/search/{query}` - Search for stocks by name or ticker. Returns matching stocks with their ticker symbol, exchange and company name.
 1. `/stocks/{symbol}:{exchange}` - Provides the current price, previous close, market cap and more.
 1. `/stocks/news/{symbol}:{exchange}` - Provides latest news of the given stock.
+1. `/indexes/{index_name}:{index_exchange}` - Provides current value, previous close, day/year range for market indexes.
 1. `/crypto/{crypto_name}:{currency}` - Provides current price, change, previous close and more.
 1. `/ws` - WebSocket endpoint for live stock/crypto price updates (see [WebSocket docs](#websocket--live-updates)).
 
@@ -32,6 +34,36 @@ PORT = 8000
 
 
 ## 🏁 Examples:
+
+**Request url :** `/stocks/search/Tesla` <br>
+**Response :**
+```json
+[
+    {
+        "ticker": "TSLA",
+        "name": "Tesla Inc",
+        "exchange": "NASDAQ"
+    },
+    {
+        "ticker": "0R0X",
+        "name": "Tesla Inc",
+        "exchange": "LON"
+    },
+    {
+        "ticker": "TL0",
+        "name": "Tesla Inc",
+        "exchange": "ETR"
+    },
+    {
+        "ticker": "TXLZF",
+        "name": "Tesla Exploration Ltd",
+        "exchange": "OTCMKTS"
+    }
+]
+```
+Clients can use the returned `ticker` and `exchange` to query the stock data endpoint, e.g. `/stocks/TSLA:NASDAQ`.
+
+---
 
 **Request url :** `/stocks/TSLA:NASDAQ` <br>
 **Response :** 
@@ -64,6 +96,30 @@ PORT = 8000
 ]
 ```
 
+---
+
+**Request url :** `/indexes/NIFTY_50:INDEXNSE` <br>
+**Response :**
+```json
+{
+    "stockName": "NIFTY 50",
+    "price": 25713,
+    "previousClose": 25571.25,
+    "change": 141.75,
+    "changePercent": 0.55,
+    "dayRange": "25,609.35 - 25,771.45",
+    "yearRange": "21,743.65 - 26,373.20"
+}
+```
+Index identifiers use the format `INDEX_NAME:INDEX_EXCHANGE`. Common examples:
+- `NIFTY_50:INDEXNSE` — Nifty 50
+- `SENSEX:INDEXBOM` — BSE Sensex
+- `NDX:INDEXNASDAQ` — Nasdaq-100
+- `.DJI:INDEXDJX` — Dow Jones Industrial Average
+- `.INX:INDEXSP` — S&P 500
+
+---
+
 **Request url :** `/crypto/BTC:USD` <br>
 **Response :** 
 ```json
@@ -80,7 +136,7 @@ PORT = 8000
 
 ### Overview
 
-The `/ws` endpoint provides a persistent WebSocket connection for receiving real-time stock and crypto price updates. The server maintains an in-memory store of all subscribed tickers. A background poller scrapes fresh data every 5 seconds and pushes updates to connected clients **only when values change**.
+The `/ws` endpoint provides a persistent WebSocket connection for receiving real-time stock, index and crypto price updates. The server maintains an in-memory store of all subscribed tickers. A background poller scrapes fresh data every 5 seconds and pushes updates to connected clients **only when values change**.
 
 **Architecture:**
 
@@ -113,6 +169,7 @@ All messages are JSON with two fields:
 
 **Ticker format:**
 - Stocks: `SYMBOL:EXCHANGE` (e.g. `TSLA:NASDAQ`, `PAYTM:NSE`, `AAPL:NASDAQ`)
+- Indexes: `INDEX_NAME:INDEX_EXCHANGE` (e.g. `NIFTY_50:INDEXNSE`, `NDX:INDEXNASDAQ`, `.DJI:INDEXDJX`)
 - Crypto: `NAME-CURRENCY` (e.g. `BTC-USD`, `ETH-USD`)
 
 **Subscribe example:**
@@ -146,6 +203,7 @@ All server messages are JSON with this shape:
 | `subscribed`     | Acknowledgement after a successful subscribe |
 | `unsubscribed`   | Acknowledgement after a successful unsubscribe |
 | `stock_update`   | Stock data changed (pushed automatically) |
+| `index_update`   | Index data changed (pushed automatically) |
 | `crypto_update`  | Crypto data changed (pushed automatically) |
 | `error`          | Invalid message format or unknown action |
 
@@ -189,6 +247,24 @@ All server messages are JSON with this shape:
 }
 ```
 
+**`index_update` data:**
+```json
+{
+    "type": "index_update",
+    "ticker": "NIFTY_50:INDEXNSE",
+    "data": {
+        "stockName": "NIFTY 50",
+        "price": 25713,
+        "previousClose": 25571.25,
+        "change": 141.75,
+        "changePercent": 0.55,
+        "dayRange": "25,609.35 - 25,771.45",
+        "yearRange": "21,743.65 - 26,373.20"
+    },
+    "timestamp": "2026-02-23T12:00:05Z"
+}
+```
+
 ### Full Client Example (JavaScript)
 
 ```javascript
@@ -197,9 +273,9 @@ const ws = new WebSocket("ws://localhost:8084/ws");
 ws.onopen = () => {
     console.log("Connected to StonksAPI");
 
-    // Subscribe to stocks and crypto
+    // Subscribe to stocks, indexes and crypto
     ws.send(JSON.stringify({ action: "subscribe", ticker: "TSLA:NASDAQ" }));
-    ws.send(JSON.stringify({ action: "subscribe", ticker: "AAPL:NASDAQ" }));
+    ws.send(JSON.stringify({ action: "subscribe", ticker: "NIFTY_50:INDEXNSE" }));
     ws.send(JSON.stringify({ action: "subscribe", ticker: "BTC-USD" }));
 };
 
@@ -215,6 +291,7 @@ ws.onmessage = (event) => {
                 console.log(`Subscribed to ${msg.ticker}`);
                 break;
             case "stock_update":
+            case "index_update":
                 // Update your dashboard with msg.data
                 console.log(`${msg.ticker}: $${msg.data.price} (${msg.data.changePercent}%)`);
                 break;

@@ -65,6 +65,8 @@ func main() {
 	r.Get("/stocks/{stock_query}", getStockStats)
 	// Stock News
 	r.Get("/stocks/news/{stock_query}", getStockNews)
+	// Index Data
+	r.Get("/indexes/{index_query}", getIndexData)
 	// Crypto Data
 	r.Get("/crypto/{crypto_name}:{crypto_currency}", getCryptoData)
 	// Crypto News
@@ -144,6 +146,21 @@ func searchStocks(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "    ")
 	enc.Encode(*results)
+}
+
+func getIndexData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	index_data := Get_Stock_Data(collector, chi.URLParam(r, "index_query"))
+
+	if index_data.Name == "" {
+		w.WriteHeader(404)
+		w.Write([]byte(fmt.Sprintf("No index data found for the query '%s'.", chi.URLParam(r, "index_query"))))
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "    ")
+	enc.Encode(*index_data)
 }
 
 func getCryptoNews(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,22 @@
+services:
+  stonksapi:
+    build: .
+    container_name: stonksapi
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8084"
+    networks:
+      - reverse_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stonksapi.rule=Host(`stonksapi.milind.dev`)"
+      - "traefik.http.routers.stonksapi.entrypoints=web,websecure"
+      - "traefik.http.routers.stonksapi.tls=true"
+      - "traefik.http.routers.stonksapi.tls.certresolver=milindsresolver"
+      - "traefik.http.services.stonksapi.loadbalancer.server.port=8084"
+
+networks:
+  reverse_proxy:
+    external: true

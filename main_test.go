@@ -31,6 +31,7 @@ func setupTestRouter() http.Handler {
 	r.Get("/stocks/search/{query}", searchStocks)
 	r.Get("/stocks/{stock_query}", getStockStats)
 	r.Get("/stocks/news/{stock_query}", getStockNews)
+	r.Get("/indexes/{index_query}", getIndexData)
 	r.Get("/crypto/{crypto_name}:{crypto_currency}", getCryptoData)
 
 	return r
@@ -155,5 +156,41 @@ func TestSearchEndpoint(t *testing.T) {
 	t.Logf("Got %d search results", len(results))
 	for _, r := range results {
 		t.Logf("  %s (%s:%s)", r.Name, r.Ticker, r.Exchange)
+	}
+}
+
+func TestIndexEndpoint(t *testing.T) {
+	router := setupTestRouter()
+	req := httptest.NewRequest("GET", "/indexes/NIFTY_50:INDEXNSE", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var data Stock_Key_Stats
+	if err := json.Unmarshal(rr.Body.Bytes(), &data); err != nil {
+		t.Fatalf("Failed to parse JSON response: %v", err)
+	}
+
+	if data.Name == "" {
+		t.Fatal("Expected non-empty index name in response")
+	}
+	if data.Price == 0 {
+		t.Fatal("Expected non-zero price in response")
+	}
+
+	t.Logf("Index endpoint returned: %s @ %.2f", data.Name, data.Price)
+}
+
+func TestInvalidIndexEndpoint(t *testing.T) {
+	router := setupTestRouter()
+	req := httptest.NewRequest("GET", "/indexes/INVALIDINDEX:FAKEEXCHANGE", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("Expected status 404 for invalid index, got %d", rr.Code)
 	}
 }

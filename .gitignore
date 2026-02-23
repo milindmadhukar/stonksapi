@@ -20,3 +20,5 @@ cached_files
 .env
 
 **.html
+/tmp
+/stonksapi

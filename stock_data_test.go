@@ -88,3 +88,47 @@ func TestGetStockNews(t *testing.T) {
 		t.Logf("News[%d]: %s (%s)", i, item.Title, item.Source)
 	}
 }
+
+func TestGetIndexDataNifty(t *testing.T) {
+	c := newTestCollector()
+	data := Get_Stock_Data(c, "NIFTY_50:INDEXNSE")
+
+	if data.Name == "" {
+		t.Fatal("Expected non-empty name for NIFTY_50:INDEXNSE")
+	}
+	if data.Price == 0 {
+		t.Fatal("Expected non-zero price for NIFTY_50:INDEXNSE")
+	}
+	if data.PreviousClose == 0 {
+		t.Fatal("Expected non-zero previous close for NIFTY_50:INDEXNSE")
+	}
+	if data.DayRange == "" {
+		t.Fatal("Expected non-empty day range for NIFTY_50:INDEXNSE")
+	}
+	if data.YearRange == "" {
+		t.Fatal("Expected non-empty year range for NIFTY_50:INDEXNSE")
+	}
+
+	t.Logf("Index: %s, Value: %.2f, PrevClose: %.2f, Change: %.2f (%.2f%%)",
+		data.Name, data.Price, data.PreviousClose, data.Change, data.ChangePercent)
+	t.Logf("DayRange: %s, YearRange: %s", data.DayRange, data.YearRange)
+}
+
+func TestGetIndexDataNDX(t *testing.T) {
+	c := newTestCollector()
+	data := Get_Stock_Data(c, "NDX:INDEXNASDAQ")
+
+	if data.Name == "" {
+		t.Fatal("Expected non-empty name for NDX:INDEXNASDAQ")
+	}
+	if data.Price == 0 {
+		t.Fatal("Expected non-zero price for NDX:INDEXNASDAQ")
+	}
+	if data.PreviousClose == 0 {
+		t.Fatal("Expected non-zero previous close for NDX:INDEXNASDAQ")
+	}
+
+	t.Logf("Index: %s, Value: %.2f, PrevClose: %.2f, Change: %.2f (%.2f%%)",
+		data.Name, data.Price, data.PreviousClose, data.Change, data.ChangePercent)
+	t.Logf("DayRange: %s, YearRange: %s", data.DayRange, data.YearRange)
+}

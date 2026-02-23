@@ -24,7 +24,7 @@ type ClientMessage struct {
 
 // ServerMessage is what the server pushes to clients.
 type ServerMessage struct {
-	Type      string      `json:"type"`   // "stock_update", "crypto_update", "error", "subscribed", "unsubscribed"
+	Type      string      `json:"type"`   // "stock_update", "index_update", "crypto_update", "error", "subscribed", "unsubscribed"
 	Ticker    string      `json:"ticker"` // the ticker key
 	Data      interface{} `json:"data,omitempty"`
 	Error     string      `json:"error,omitempty"`
@@ -38,7 +38,8 @@ type ServerMessage struct {
 // StockEntry wraps the latest scraped data for one ticker.
 type StockEntry struct {
 	Ticker      string            `json:"ticker"`
-	IsStock     bool              `json:"isStock"` // true = stock, false = crypto
+	IsStock     bool              `json:"isStock"` // true = stock/index, false = crypto
+	IsIndex     bool              `json:"isIndex"` // true = market index
 	StockData   *Stock_Key_Stats  `json:"stockData,omitempty"`
 	CryptoData  *Crypto_Key_Stats `json:"cryptoData,omitempty"`
 	LastUpdated time.Time         `json:"lastUpdated"`
@@ -196,6 +197,7 @@ func (h *Hub) subscribe(client *Client, ticker string) {
 		h.store[ticker] = &StockEntry{
 			Ticker:  ticker,
 			IsStock: isStockTicker(ticker),
+			IsIndex: isIndexTicker(ticker),
 		}
 		log.Printf("[hub] new ticker tracked: %s", ticker)
 	}
@@ -256,10 +258,20 @@ func (h *Hub) unsubscribe(client *Client, ticker string) {
 	})
 }
 
-// isStockTicker distinguishes stocks (TSLA:NASDAQ) from crypto (BTC-USD).
-// Stocks use ":" as separator, crypto uses "-".
+// isStockTicker distinguishes stocks/indexes (TSLA:NASDAQ) from crypto (BTC-USD).
+// Stocks and indexes use ":" as separator, crypto uses "-".
 func isStockTicker(ticker string) bool {
 	return strings.Contains(ticker, ":")
+}
+
+// isIndexTicker identifies market index tickers.
+// Index exchanges start with "INDEX" (e.g. INDEXNSE, INDEXNASDAQ, INDEXDJX).
+func isIndexTicker(ticker string) bool {
+	parts := strings.SplitN(ticker, ":", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	return strings.HasPrefix(parts[1], "INDEX")
 }
 
 // ---------------------------------------------------------------------------
@@ -317,6 +329,7 @@ func (h *Hub) pollTicker(ticker string) {
 		if changed {
 			entry.StockData = newData
 			entry.IsStock = true
+			entry.IsIndex = isIndexTicker(ticker)
 			entry.LastUpdated = time.Now()
 		}
 		h.mu.Unlock()
@@ -362,7 +375,9 @@ func (h *Hub) pollTicker(ticker string) {
 func (h *Hub) broadcastEntry(ticker string, entry *StockEntry) {
 	msgType := "stock_update"
 	var data interface{} = entry.StockData
-	if !entry.IsStock {
+	if entry.IsIndex {
+		msgType = "index_update"
+	} else if !entry.IsStock {
 		msgType = "crypto_update"
 		data = entry.CryptoData
 	}
@@ -401,7 +416,9 @@ func (h *Hub) broadcastEntry(ticker string, entry *StockEntry) {
 func (h *Hub) sendEntryToClient(client *Client, entry *StockEntry) {
 	msgType := "stock_update"
 	var data interface{} = entry.StockData
-	if !entry.IsStock {
+	if entry.IsIndex {
+		msgType = "index_update"
+	} else if !entry.IsStock {
 		msgType = "crypto_update"
 		data = entry.CryptoData
 	}

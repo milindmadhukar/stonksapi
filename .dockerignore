@@ -1,0 +1,9 @@
+.git
+.env
+*.exe
+*.test
+*.out
+stonksapi
+tmp/
+cached_files/
+README.md
