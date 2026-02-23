@@ -33,14 +33,32 @@ func Search_Stocks(collector *colly.Collector, query string) *[]SearchResult {
 			return
 		}
 
-		// Extract exchange from href: "./quote/TSLA:NASDAQ" -> "NASDAQ"
+		// Extract the full segment after the last "/" in the href.
+		// Examples:
+		//   "./quote/TSLA:NASDAQ"      -> segment = "TSLA:NASDAQ"
+		//   "./quote/.DJI:INDEXDJX"    -> segment = ".DJI:INDEXDJX"
+		//   "./quote/BTC-USD"          -> segment = "BTC-USD"
 		exchange := ""
+		hrefTicker := ""
 		if lastSlash := strings.LastIndex(href, "/"); lastSlash != -1 {
 			segment := href[lastSlash+1:]
 			if colonIdx := strings.Index(segment, ":"); colonIdx != -1 {
+				hrefTicker = segment[:colonIdx]
 				exchange = segment[colonIdx+1:]
+			} else if dashIdx := strings.Index(segment, "-"); dashIdx != -1 {
+				// Crypto: "BTC-USD" -> ticker="BTC", exchange="USD"
+				hrefTicker = segment[:dashIdx]
+				exchange = segment[dashIdx+1:]
 			}
 		}
+
+		// For indices, Google shows "Index" as the display text instead of
+		// the actual symbol (e.g. ".DJI"). Use the href-parsed ticker.
+		if ticker == "Index" && hrefTicker != "" {
+			ticker = hrefTicker
+		}
+		// For crypto, the DOM ticker is just the coin name (e.g. "BTC")
+		// which matches hrefTicker, so no override needed.
 
 		results = append(results, SearchResult{
 			Ticker:   ticker,
