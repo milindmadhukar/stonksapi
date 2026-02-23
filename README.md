@@ -2,6 +2,12 @@
 
 A WIP  API which scrapes [Google Finance](https://www.google.com/finance) to provide with stocks and crypto data and news.
 
+This is a monorepo containing both the **API** and the **Dashboard**.
+
+| Directory | Description | Deployment |
+|-----------|-------------|------------|
+| [`api/`](./api) | Go API — scrapes Google Finance, serves REST + WebSocket endpoints | Docker (self-hosted) |
+| [`dashboard/`](./dashboard) | Astro + Tailwind frontend — real-time stock dashboard | Vercel |
 
 ## 💻 Endpoints
 1. `/stocks/search/{query}` - Search for stocks by name or ticker. Returns matching stocks with their ticker symbol, exchange and company name.
@@ -24,13 +30,18 @@ Real-time updates are served over WebSocket using [Gorilla WebSocket](https://gi
 ## ⛏️  Local Setup
 
 To set the project locally, the following steps are to be followed.
-1. Clone the repository. Change your working directory to the root of the project where the `go.mod` file is present and run `go mod tidy` to install all the dependencies.
-1. Create a `.env` file in the root directory of the project and paste the following.
+1. Clone the repository. Change your working directory to the `api/` folder where the `go.mod` file is present and run `go mod tidy` to install all the dependencies.
+1. Create a `.env` file in the `api/` directory of the project and paste the following.
 ```
 PORT = 8000
 ```
 1. Run the command `go run .` to start the api or use `go build .` to create an executable and run that.
 1. Visit the url `http://127.0.0.1:8000` and try the endpoints as mentioned in [endpoints](#-endpoints).
+
+### Dashboard Setup
+1. `cd dashboard && bun install`
+2. Create a `.env` file: `PUBLIC_BACKEND_URL=localhost:8084`
+3. `bun dev` — starts at `localhost:4321`
 
 
 ## 🏁 Examples:
@@ -199,7 +210,7 @@ All server messages are JSON with this shape:
 **Message types:**
 
 | Type             | When sent |
-|------------------|-----------|
+|------------------|-----------| 
 | `subscribed`     | Acknowledgement after a successful subscribe |
 | `unsubscribed`   | Acknowledgement after a successful unsubscribe |
 | `stock_update`   | Stock data changed (pushed automatically) |
@@ -322,7 +333,7 @@ ws.onclose = () => {
 
 Run the test suite to verify the scraper is working correctly:
 ```bash
-go test -v -timeout 60s ./...
+cd api && go test -v -timeout 60s ./...
 ```
 
 > **Note:** Tests scrape live Google Finance pages, so they require internet access. If Google changes their HTML structure, tests will fail — this is by design to detect breakages early.
