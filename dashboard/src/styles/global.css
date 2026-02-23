@@ -30,29 +30,70 @@ button,
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code",
     ui-monospace, monospace;
 
-  --color-surface-0: #09090b;
-  --color-surface-1: #111113;
-  --color-surface-2: #18181b;
-  --color-surface-3: #1e1e22;
-  --color-border: #27272a;
-  --color-border-hover: #3f3f46;
-  --color-muted: #71717a;
-  --color-subtle: #a1a1aa;
-  --color-foreground: #fafafa;
+  --color-surface-0: var(--surf-0);
+  --color-surface-1: var(--surf-1);
+  --color-surface-2: var(--surf-2);
+  --color-surface-3: var(--surf-3);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-foreground: var(--foreground);
 
-  --color-up: #22c55e;
-  --color-up-muted: #166534;
-  --color-down: #ef4444;
-  --color-down-muted: #991b1b;
+  --color-up: var(--up);
+  --color-up-muted: var(--up-muted);
+  --color-down: var(--down);
+  --color-down-muted: var(--down-muted);
 
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-accent-muted: #312e81;
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
 
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-slide-up: slide-up 0.3s ease-out;
-  --animate-flash-border: flash-border 0.6s ease-out;
+}
+
+:root {
+  --surf-0: #f4f4f5;
+  --surf-1: #ffffff;
+  --surf-2: #fafafa;
+  --surf-3: #f4f4f5;
+  --border: #e4e4e7;
+  --border-hover: #d4d4d8;
+  --muted: #52525b;
+  --subtle: #71717a;
+  --foreground: #09090b;
+
+  --up: #16a34a;
+  --up-muted: #dcfce7;
+  --down: #dc2626;
+  --down-muted: #fee2e2;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-muted: #e0e7ff;
+}
+
+.dark {
+  --surf-0: #09090b;
+  --surf-1: #111113;
+  --surf-2: #18181b;
+  --surf-3: #1e1e22;
+  --border: #27272a;
+  --border-hover: #3f3f46;
+  --muted: #71717a;
+  --subtle: #a1a1aa;
+  --foreground: #fafafa;
+
+  --up: #22c55e;
+  --up-muted: #166534;
+  --down: #ef4444;
+  --down-muted: #991b1b;
+
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-muted: #312e81;
 }
 
 @keyframes pulse-glow {
@@ -85,50 +126,32 @@ button,
   }
 }
 
-@keyframes flash-border {
-  0% {
-    border-color: var(--color-up);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--color-up) 25%, transparent);
-  }
-  100% {
-    border-color: var(--color-border);
-    box-shadow: none;
-  }
+/* Sweeping line animations for indicators */
+.flash-up, .flash-down {
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes flash-border-down {
-  0% {
-    border-color: var(--color-down);
-    box-shadow: 0 0 12px
-      color-mix(in srgb, var(--color-down) 25%, transparent);
-  }
-  100% {
-    border-color: var(--color-border);
-    box-shadow: none;
-  }
+.flash-up::after, .flash-down::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  width: 60%;
+  height: 3px;
+  background: var(--color-up);
+  animation: sweep 1.5s ease-in-out forwards;
 }
 
-@keyframes price-flash-up {
-  0% {
-    color: var(--color-up);
-    text-shadow: 0 0 8px color-mix(in srgb, var(--color-up) 40%, transparent);
-  }
-  100% {
-    color: var(--color-foreground);
-    text-shadow: none;
-  }
+.flash-down::after {
+  background: var(--color-down);
 }
 
-@keyframes price-flash-down {
-  0% {
-    color: var(--color-down);
-    text-shadow: 0 0 8px
-      color-mix(in srgb, var(--color-down) 40%, transparent);
-  }
-  100% {
-    color: var(--color-foreground);
-    text-shadow: none;
-  }
+@keyframes sweep {
+  0% { left: -100%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 150%; opacity: 0; }
 }
 
 @keyframes tick-arrow {
@@ -219,31 +242,25 @@ button,
   color: var(--color-subtle);
 }
 
-/* List view row flash */
-.list-flash-up {
-  animation: list-row-flash-up 0.8s ease-out;
+/* List view row flash overrides to use sweep instead of bg color flash */
+.list-flash-up, .list-flash-down {
+  position: relative;
+  overflow: hidden;
 }
 
-.list-flash-down {
-  animation: list-row-flash-down 0.8s ease-out;
+.list-flash-up::after, .list-flash-down::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  width: 60%;
+  height: 2px;
+  background: var(--color-up);
+  animation: sweep 1.5s ease-in-out forwards;
 }
 
-@keyframes list-row-flash-up {
-  0% {
-    background: color-mix(in srgb, var(--color-up) 12%, transparent);
-  }
-  100% {
-    background: transparent;
-  }
-}
-
-@keyframes list-row-flash-down {
-  0% {
-    background: color-mix(in srgb, var(--color-down) 12%, transparent);
-  }
-  100% {
-    background: transparent;
-  }
+.list-flash-down::after {
+  background: var(--color-down);
 }
 
 /* Select dropdown styling */

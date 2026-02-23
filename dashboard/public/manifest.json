@@ -1,7 +1,7 @@
 {
-  "name": "Milind's Stonks Dashboard",
+  "name": "Milind's Stonks",
   "short_name": "Stonks",
-  "description": "Real-time stock, crypto & index prices via WebSocket",
+  "description": "Milind's Stonks - Live Financial Dashboard",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

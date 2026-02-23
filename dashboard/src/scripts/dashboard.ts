@@ -39,12 +39,12 @@ interface SearchResult {
 
 interface ServerMessage {
   type:
-    | "subscribed"
-    | "unsubscribed"
-    | "stock_update"
-    | "index_update"
-    | "crypto_update"
-    | "error";
+  | "subscribed"
+  | "unsubscribed"
+  | "stock_update"
+  | "index_update"
+  | "crypto_update"
+  | "error";
   ticker: string;
   data?: StockData | IndexData | CryptoData;
   error?: string;
@@ -145,14 +145,11 @@ function getCurrencySymbol(ticker: string, data: StockData | IndexData | CryptoD
 
 // ---------- helpers ----------
 function isIndex(ticker: string): boolean {
+  if (ticker.startsWith("^")) return true;
   const colon = ticker.indexOf(":");
   if (colon === -1) return false;
   const exchange = ticker.slice(colon + 1).toUpperCase();
   return exchange.startsWith("INDEX");
-}
-
-function isStock(ticker: string): boolean {
-  return ticker.includes(":");
 }
 
 function isCrypto(ticker: string): boolean {
@@ -162,8 +159,8 @@ function isCrypto(ticker: string): boolean {
 function detectKind(ticker: string): TrackedTicker["kind"] {
   if (isIndex(ticker)) return "index";
   if (isCrypto(ticker)) return "crypto";
-  if (isStock(ticker)) return "stock";
-  return "unknown";
+  // fallback for any unrecognized strings without '-' or special prefixes
+  return "stock";
 }
 
 // ---------- state ----------
@@ -180,6 +177,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let currentView: ViewMode = "card";
 let currentSort: SortMode = "custom";
 let currentFilter = "ALL";
+let currentTab: "all" | "stocks" | "crypto" | "indices" = "all";
 
 // Search state
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -201,8 +199,15 @@ const sortSelect = document.getElementById("sort-select") as HTMLSelectElement;
 const viewCardBtn = document.getElementById("view-card")!;
 const viewListBtn = document.getElementById("view-list")!;
 const searchDropdown = document.getElementById("search-dropdown")!;
-const indicesStrip = document.getElementById("indices-strip")!;
-const indicesContainer = document.getElementById("indices-container")!;
+
+// Tabs & Theme
+const tabAll = document.getElementById("tab-all")!;
+const tabStocks = document.getElementById("tab-stocks")!;
+const tabCrypto = document.getElementById("tab-crypto")!;
+const tabIndices = document.getElementById("tab-indices")!;
+const themeLight = document.getElementById("theme-light")!;
+const themeDark = document.getElementById("theme-dark")!;
+const themeSystem = document.getElementById("theme-system")!;
 
 // ---------- backend URL from meta tag ----------
 const backendMeta = document.querySelector('meta[name="backend-url"]') as HTMLMetaElement | null;
@@ -299,8 +304,9 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function escapeHtml(str: string | undefined | null): string {
+  if (str == null) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function cssEscape(ticker: string): string {
@@ -309,22 +315,17 @@ function cssEscape(ticker: string): string {
 
 function toggleEmpty(): void {
   const filtered = getFilteredSortedTickers();
-  if (tickers.size === 0) {
+  const totalTracked = tickers.size + indices.size;
+  if (totalTracked === 0) {
     emptyState.classList.remove("hidden");
     toolbarEl.classList.add("hidden");
   } else {
     emptyState.classList.add("hidden");
     toolbarEl.classList.remove("hidden");
   }
-  if (tickers.size > 0 && filtered.length === 0) {
-    cardsContainer.innerHTML = `<div class="col-span-full text-center py-12 text-sm text-muted">No tickers match the current filter.</div>`;
-    listBody.innerHTML = `<div class="px-4 py-12 text-center text-sm text-muted">No tickers match the current filter.</div>`;
-  }
-  // Hide indices container if empty, but keep the strip (with add input) always visible
-  if (indices.size > 0) {
-    indicesContainer.classList.remove("hidden");
-  } else {
-    indicesContainer.classList.add("hidden");
+  if (totalTracked > 0 && filtered.length === 0) {
+    cardsContainer.innerHTML = `<div class="col-span-full text-center py-12 text-sm text-muted">No tickers match the current filter or tab.</div>`;
+    listBody.innerHTML = `<div class="px-4 py-12 text-center text-sm text-muted">No tickers match the current filter or tab.</div>`;
   }
 }
 
@@ -386,24 +387,42 @@ function parseMarketCap(cap: string): number {
 }
 
 function getFilteredSortedTickers(): TrackedTicker[] {
-  let result: TrackedTicker[] = [];
+  let resultStocks: TrackedTicker[] = [];
   for (const key of tickerOrder) {
     const t = tickers.get(key);
-    if (t) result.push(t);
+    if (t) resultStocks.push(t);
   }
   for (const [key, t] of tickers) {
     if (!tickerOrder.includes(key)) {
-      result.push(t);
+      resultStocks.push(t);
       tickerOrder.push(key);
     }
   }
 
+  let resultIndices: TrackedTicker[] = [];
+  for (const key of indexOrder) {
+    const t = indices.get(key);
+    if (t) resultIndices.push(t);
+  }
+  for (const [key, t] of indices) {
+    if (!indexOrder.includes(key)) {
+      resultIndices.push(t);
+      indexOrder.push(key);
+    }
+  }
+
+  let combined: TrackedTicker[] = [];
+  if (currentTab === "all") combined = [...resultIndices, ...resultStocks];
+  else if (currentTab === "indices") combined = [...resultIndices, ...resultStocks.filter(t => t.kind === "index" || isIndex(t.ticker))];
+  else if (currentTab === "stocks") combined = resultStocks.filter(t => (t.kind === "stock" || t.kind === "unknown") && !isIndex(t.ticker));
+  else if (currentTab === "crypto") combined = resultStocks.filter(t => t.kind === "crypto");
+
   if (currentFilter !== "ALL") {
-    result = result.filter((t) => getTickerExchange(t) === currentFilter);
+    combined = combined.filter((t) => getTickerExchange(t) === currentFilter);
   }
 
   if (currentSort !== "custom") {
-    result.sort((a, b) => {
+    combined.sort((a, b) => {
       switch (currentSort) {
         case "winners":
           return (b.data?.changePercent ?? -Infinity) - (a.data?.changePercent ?? -Infinity);
@@ -430,22 +449,7 @@ function getFilteredSortedTickers(): TrackedTicker[] {
     });
   }
 
-  return result;
-}
-
-function getOrderedIndices(): TrackedTicker[] {
-  const result: TrackedTicker[] = [];
-  for (const key of indexOrder) {
-    const t = indices.get(key);
-    if (t) result.push(t);
-  }
-  for (const [key, t] of indices) {
-    if (!indexOrder.includes(key)) {
-      result.push(t);
-      indexOrder.push(key);
-    }
-  }
-  return result;
+  return combined;
 }
 
 // ---------- rendering ----------
@@ -495,132 +499,7 @@ const dragHandleSvg = `<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 16 
 
 const dragHandleSvgSmall = `<svg class="h-3 w-3" fill="currentColor" viewBox="0 0 16 16"><circle cx="5" cy="3" r="1.2"/><circle cx="11" cy="3" r="1.2"/><circle cx="5" cy="8" r="1.2"/><circle cx="11" cy="8" r="1.2"/><circle cx="5" cy="13" r="1.2"/><circle cx="11" cy="13" r="1.2"/></svg>`;
 
-// ---------- index card rendering ----------
-function renderIndexCard(t: TrackedTicker): string {
-  const { ticker, data, direction } = t;
-  const id = cssEscape(ticker);
-  const sym = getCurrencySymbol(ticker, data, "index");
-
-  const dragHandle = `<span class="drag-handle cursor-grab active:cursor-grabbing text-muted/30 hover:text-muted/60 transition-colors">${dragHandleSvgSmall}</span>`;
-
-  // Display name: use stockName or ticker part before colon
-  const displayName = data && "stockName" in data ? (data as IndexData).stockName : ticker.split(":")[0].replace(/_/g, " ");
-
-  if (!data) {
-    return `
-      <div class="index-card group relative flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 min-w-[160px] shrink-0 animate-fade-in" id="idx-${id}" draggable="true" data-ticker="${escapeHtml(ticker)}">
-        ${dragHandle}
-        <div class="flex flex-col min-w-0">
-          <span class="text-xs font-semibold text-foreground truncate">${escapeHtml(displayName)}</span>
-          <span class="flex items-center gap-1 text-[10px] text-muted">
-            <span class="inline-block h-1 w-1 rounded-full bg-muted/40 animate-pulse-glow"></span>
-            Loading...
-          </span>
-        </div>
-        <button class="index-remove ml-auto rounded p-0.5 text-muted/30 opacity-0 group-hover:opacity-100 hover:text-down transition-all" data-ticker="${escapeHtml(ticker)}">
-          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-        </button>
-      </div>`;
-  }
-
-  const d = data as IndexData;
-  const price = d.price;
-  const change = d.change;
-  const changePercent = d.changePercent;
-  const isPositive = change >= 0;
-  const sign = isPositive ? "+" : "";
-  const changeColor = isPositive ? "text-up" : "text-down";
-  const changeBg = isPositive ? "bg-up/10" : "bg-down/10";
-
-  return `
-    <div class="index-card group relative flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 min-w-[180px] shrink-0 transition-all duration-300 hover:border-border-hover hover:bg-surface-2 animate-fade-in" id="idx-${id}" draggable="true" data-ticker="${escapeHtml(ticker)}">
-      ${dragHandle}
-      <div class="flex flex-col min-w-0">
-        <span class="text-[10px] text-muted truncate leading-tight">${escapeHtml(displayName)}</span>
-        <div class="flex items-center gap-1.5">
-          <span class="index-price text-sm font-bold tabular-nums text-foreground" id="iprice-${id}">${formatPrice(price, sym)}</span>
-          ${directionArrowTiny(direction)}
-        </div>
-      </div>
-      <div class="flex flex-col items-end ml-auto">
-        <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${changeColor} ${changeBg}">${sign}${changePercent.toFixed(2)}%</span>
-        <span class="text-[9px] tabular-nums ${changeColor} mt-0.5">${sign}${change.toFixed(2)}</span>
-      </div>
-      <button class="index-remove rounded p-0.5 text-muted/30 opacity-0 group-hover:opacity-100 hover:text-down transition-all shrink-0" data-ticker="${escapeHtml(ticker)}">
-        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-      </button>
-    </div>`;
-}
-
-function renderIndicesStrip(): void {
-  const ordered = getOrderedIndices();
-  indicesContainer.innerHTML = ordered.map(renderIndexCard).join("");
-  attachIndexDragListeners();
-  attachIndexRemoveListeners();
-}
-
-function attachIndexRemoveListeners(): void {
-  document.querySelectorAll<HTMLButtonElement>(".index-remove").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const ticker = btn.dataset.ticker;
-      if (ticker) unsubscribeIndex(ticker);
-    });
-  });
-}
-
-// ---------- index drag and drop ----------
-let draggedIndexTicker: string | null = null;
-
-function attachIndexDragListeners(): void {
-  const cards = indicesContainer.querySelectorAll<HTMLElement>("[draggable=true]");
-
-  cards.forEach((card) => {
-    card.addEventListener("dragstart", (e: DragEvent) => {
-      draggedIndexTicker = card.dataset.ticker || null;
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", draggedIndexTicker || "");
-      }
-      requestAnimationFrame(() => card.classList.add("card-dragging"));
-    });
-
-    card.addEventListener("dragend", () => {
-      card.classList.remove("card-dragging");
-      indicesContainer.querySelectorAll(".card-drag-over").forEach((el) => el.classList.remove("card-drag-over"));
-      draggedIndexTicker = null;
-    });
-
-    card.addEventListener("dragover", (e: DragEvent) => {
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-      const target = card.dataset.ticker;
-      if (target && target !== draggedIndexTicker) {
-        card.classList.add("card-drag-over");
-      }
-    });
-
-    card.addEventListener("dragleave", () => {
-      card.classList.remove("card-drag-over");
-    });
-
-    card.addEventListener("drop", (e: DragEvent) => {
-      e.preventDefault();
-      card.classList.remove("card-drag-over");
-      const fromTicker = draggedIndexTicker;
-      const toTicker = card.dataset.ticker;
-      if (fromTicker && toTicker && fromTicker !== toTicker) {
-        const fromIdx = indexOrder.indexOf(fromTicker);
-        const toIdx = indexOrder.indexOf(toTicker);
-        if (fromIdx !== -1 && toIdx !== -1) {
-          indexOrder.splice(fromIdx, 1);
-          indexOrder.splice(toIdx, 0, fromTicker);
-          saveIndices();
-          renderIndicesStrip();
-        }
-      }
-    });
-  });
-}
+// Deleted index-specific strip renderers (merged into main grid via renderCard)
 
 // ---------- stock/crypto card rendering ----------
 function renderCard(t: TrackedTicker): string {
@@ -630,9 +509,9 @@ function renderCard(t: TrackedTicker): string {
   const kindBadge =
     kind === "crypto"
       ? `<span class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400 uppercase tracking-wider">Crypto</span>`
-      : kind === "stock"
+      : (kind === "stock" || kind === "unknown")
         ? `<span class="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent uppercase tracking-wider">Stock</span>`
-        : "";
+        : `<span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400 uppercase tracking-wider">Index</span>`;
 
   const dragHandle = `<span class="drag-handle cursor-grab active:cursor-grabbing text-muted/30 hover:text-muted/60 transition-colors">${dragHandleSvg}</span>`;
 
@@ -670,26 +549,7 @@ function renderCard(t: TrackedTicker): string {
     : `<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" /></svg>`;
 
   let detailsHtml = "";
-  if (isStockData) {
-    const s = data as StockData;
-    const rows = [
-      ["Prev Close", formatPrice(s.previousClose, sym)],
-      ["Day Range", escapeHtml(s.dayRange)],
-      ["Year Range", escapeHtml(s.yearRange)],
-      ["Volume", escapeHtml(s.volume)],
-      ["Market Cap", escapeHtml(s.marketCap)],
-      ["P/E Ratio", `${s.peRatio}`],
-    ];
-    detailsHtml = `
-      <div class="mt-4 space-y-1.5 border-t border-border pt-4">
-        ${rows.map(([label, val]) =>
-          `<div class="flex items-center justify-between text-xs">
-            <span class="text-muted">${label}</span>
-            <span class="text-subtle font-medium tabular-nums">${val}</span>
-          </div>`
-        ).join("")}
-      </div>`;
-  } else {
+  if (kind === "crypto") {
     const c = data as CryptoData;
     detailsHtml = `
       <div class="mt-4 space-y-1.5 border-t border-border pt-4">
@@ -697,6 +557,41 @@ function renderCard(t: TrackedTicker): string {
           <span class="text-muted">Prev Close</span>
           <span class="text-subtle font-medium tabular-nums">${formatPrice(c.previousClose, sym)}</span>
         </div>
+      </div>`;
+  } else if (kind === "index") {
+    const idx = data as IndexData;
+    const rows = [
+      ["Prev Close", formatPrice(idx.previousClose, sym)],
+      ["Day Range", escapeHtml(idx.dayRange)],
+      ["Year Range", escapeHtml(idx.yearRange)],
+    ];
+    detailsHtml = `
+      <div class="mt-4 space-y-1.5 border-t border-border pt-4">
+        ${rows.map(([label, val]) =>
+      `<div class="flex items-center justify-between text-xs">
+            <span class="text-muted">${label}</span>
+            <span class="text-subtle font-medium tabular-nums">${val}</span>
+          </div>`
+    ).join("")}
+      </div>`;
+  } else {
+    const s = data as StockData;
+    const rows = [
+      ["Prev Close", formatPrice(s.previousClose, sym)],
+      ["Day Range", escapeHtml(s.dayRange)],
+      ["Year Range", escapeHtml(s.yearRange)],
+      ["Volume", escapeHtml(s.volume || "\u2014")],
+      ["Market Cap", escapeHtml(s.marketCap || "\u2014")],
+      ["P/E Ratio", `${s.peRatio || "\u2014"}`],
+    ];
+    detailsHtml = `
+      <div class="mt-4 space-y-1.5 border-t border-border pt-4">
+        ${rows.map(([label, val]) =>
+      `<div class="flex items-center justify-between text-xs">
+            <span class="text-muted">${label}</span>
+            <span class="text-subtle font-medium tabular-nums">${val}</span>
+          </div>`
+    ).join("")}
       </div>`;
   }
 
@@ -793,8 +688,8 @@ function renderListRow(t: TrackedTicker): string {
   const changeColor = isPositive ? "text-up" : "text-down";
   const changeBg = isPositive ? "bg-up/10" : "bg-down/10";
 
-  const volume = isStockData ? (data as StockData).volume : "\u2014";
-  const marketCap = isStockData ? (data as StockData).marketCap : "\u2014";
+  const volume = (kind === "stock" || kind === "unknown") ? ((data as StockData).volume || "\u2014") : "\u2014";
+  const marketCap = (kind === "stock" || kind === "unknown") ? ((data as StockData).marketCap || "\u2014") : "\u2014";
 
   return `
     <div class="list-row transition-colors hover:bg-surface-2" id="row-${id}" draggable="true" data-ticker="${escapeHtml(ticker)}">
@@ -814,11 +709,11 @@ function renderListRow(t: TrackedTicker): string {
           </div>
           <div class="flex items-center justify-between mt-1">
             <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${changeColor} ${changeBg}">${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)</span>
-            <button class="card-remove rounded-md p-1 text-muted/40 hover:text-down hover:bg-surface-3 transition-colors" data-ticker="${escapeHtml(ticker)}">
-              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-            </button>
           </div>
         </div>
+        <button class="card-remove self-center rounded-md p-1.5 text-muted/40 hover:text-down hover:bg-surface-3 transition-colors shrink-0 ml-1" data-ticker="${escapeHtml(ticker)}">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
       </div>
       <!-- Desktop: grid layout -->
       <div class="list-grid hidden sm:grid items-center px-4 py-2.5 text-sm">
@@ -860,33 +755,25 @@ function renderAll(): void {
   }
 
   attachRemoveListeners();
-  renderIndicesStrip();
   toggleEmpty();
 }
 
 // ---------- flash indicators ----------
 function flashCard(ticker: string, dir: PriceDirection): void {
   const id = cssEscape(ticker);
+  if (!dir || dir === "flat") return;
+
+  const flashClass = dir === "down" ? "flash-down" : "flash-up";
 
   if (currentView === "card") {
     const card = document.getElementById(`card-${id}`);
     const dot = document.getElementById(`dot-${id}`);
-    const priceEl = document.getElementById(`price-${id}`);
 
     if (card) {
-      card.style.animation = "none";
-      void card.offsetWidth;
-      card.style.animation = dir === "down"
-        ? "flash-border-down 0.6s ease-out"
-        : "flash-border 0.6s ease-out";
-    }
-
-    if (priceEl && dir && dir !== "flat") {
-      priceEl.style.animation = "none";
-      void priceEl.offsetWidth;
-      priceEl.style.animation = dir === "down"
-        ? "price-flash-down 1s ease-out"
-        : "price-flash-up 1s ease-out";
+      card.classList.remove("flash-up", "flash-down");
+      void card.offsetWidth; // trigger reflow
+      card.classList.add(flashClass);
+      setTimeout(() => card.classList.remove(flashClass), 1500);
     }
 
     if (dot) {
@@ -901,48 +788,14 @@ function flashCard(ticker: string, dir: PriceDirection): void {
     }
   } else {
     const row = document.getElementById(`row-${id}`);
-    const priceEl = document.getElementById(`lprice-${id}`);
-    const priceMobileEl = document.getElementById(`lprice-m-${id}`);
+    const listFlashClass = dir === "down" ? "list-flash-down" : "list-flash-up";
 
     if (row) {
       row.classList.remove("list-flash-up", "list-flash-down");
-      void row.offsetWidth;
-      row.classList.add(dir === "down" ? "list-flash-down" : "list-flash-up");
-      setTimeout(() => row.classList.remove("list-flash-up", "list-flash-down"), 800);
+      void row.offsetWidth; // trigger reflow
+      row.classList.add(listFlashClass);
+      setTimeout(() => row.classList.remove("list-flash-up", "list-flash-down"), 1500);
     }
-
-    // Flash both desktop and mobile price elements
-    for (const el of [priceEl, priceMobileEl]) {
-      if (el && dir && dir !== "flat") {
-        el.style.animation = "none";
-        void el.offsetWidth;
-        el.style.animation = dir === "down"
-          ? "price-flash-down 1s ease-out"
-          : "price-flash-up 1s ease-out";
-      }
-    }
-  }
-}
-
-function flashIndexCard(ticker: string, dir: PriceDirection): void {
-  const id = cssEscape(ticker);
-  const card = document.getElementById(`idx-${id}`);
-  const priceEl = document.getElementById(`iprice-${id}`);
-
-  if (card) {
-    card.style.animation = "none";
-    void card.offsetWidth;
-    card.style.animation = dir === "down"
-      ? "flash-border-down 0.6s ease-out"
-      : "flash-border 0.6s ease-out";
-  }
-
-  if (priceEl && dir && dir !== "flat") {
-    priceEl.style.animation = "none";
-    void priceEl.offsetWidth;
-    priceEl.style.animation = dir === "down"
-      ? "price-flash-down 1s ease-out"
-      : "price-flash-up 1s ease-out";
   }
 }
 
@@ -969,29 +822,36 @@ function setView(mode: ViewMode): void {
   renderAll();
 }
 
-// ---------- drag and drop: shared logic ----------
 function handleDrop(fromTicker: string, toTicker: string): void {
   if (fromTicker === toTicker) return;
 
-  if (currentSort !== "custom") {
-    const visualOrder = getFilteredSortedTickers().map((t) => t.ticker);
-    const visibleSet = new Set(visualOrder);
-    const hiddenItems = tickerOrder.filter((t) => !visibleSet.has(t));
-    tickerOrder = [...visualOrder, ...hiddenItems];
+  // Since we merged indices and stocks, we need to correctly determine the source order tracking logic.
+  let isIndex = false;
+  let arrOrder = tickerOrder;
+  if (indices.has(fromTicker)) {
+    isIndex = true;
+    arrOrder = indexOrder;
+  }
 
+  if (currentSort !== "custom") {
+    // If user interacts via drag while not "custom", auto swap to custom but just update the visual order 
+    // bounded by the type they dragged (so we don't mix up global custom orders weirdly if they filter).
     currentSort = "custom";
     sortSelect.value = "custom";
     savePrefs();
   }
 
-  const fromIdx = tickerOrder.indexOf(fromTicker);
-  const toIdx = tickerOrder.indexOf(toTicker);
+  const fromIdx = arrOrder.indexOf(fromTicker);
+  const toIdx = arrOrder.indexOf(toTicker);
+  // Do not allow dragging across boundaries of index/stock for internal sorted arrays for now
   if (fromIdx === -1 || toIdx === -1) return;
 
-  tickerOrder.splice(fromIdx, 1);
-  tickerOrder.splice(toIdx, 0, fromTicker);
+  arrOrder.splice(fromIdx, 1);
+  arrOrder.splice(toIdx, 0, fromTicker);
 
-  saveTickers();
+  if (isIndex) saveIndices();
+  else saveTickers();
+
   renderAll();
 }
 
@@ -1268,8 +1128,7 @@ function handleMessage(msg: ServerMessage): void {
         indices.delete(msg.ticker);
         indexOrder = indexOrder.filter((t) => t !== msg.ticker);
         saveIndices();
-        renderIndicesStrip();
-        toggleEmpty();
+        renderAll();
       } else {
         tickers.delete(msg.ticker);
         tickerOrder = tickerOrder.filter((t) => t !== msg.ticker);
@@ -1316,9 +1175,8 @@ function handleMessage(msg: ServerMessage): void {
           tracked.kind = "index";
           tracked.direction = dir;
 
-          renderIndicesStrip();
-          toggleEmpty();
-          requestAnimationFrame(() => flashIndexCard(msg.ticker, dir));
+          renderAll();
+          requestAnimationFrame(() => flashCard(msg.ticker, dir));
         }
       } else {
         const tracked = tickers.get(msg.ticker);
@@ -1415,8 +1273,7 @@ function subscribeIndex(ticker: string): void {
   }
 
   saveIndices();
-  renderIndicesStrip();
-  toggleEmpty();
+  renderAll();
 
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ action: "subscribe", ticker: normalized }));
@@ -1433,8 +1290,7 @@ function unsubscribeIndex(ticker: string): void {
   indices.delete(ticker);
   indexOrder = indexOrder.filter((t) => t !== ticker);
   saveIndices();
-  renderIndicesStrip();
-  toggleEmpty();
+  renderAll();
 }
 
 // ---------- event listeners ----------
@@ -1511,6 +1367,71 @@ sortSelect.addEventListener("change", () => {
 
 viewCardBtn.addEventListener("click", () => setView("card"));
 viewListBtn.addEventListener("click", () => setView("list"));
+
+// Tabs Event Listeners
+const tabs = [
+  { id: "all", el: tabAll },
+  { id: "stocks", el: tabStocks },
+  { id: "crypto", el: tabCrypto },
+  { id: "indices", el: tabIndices }
+];
+
+tabs.forEach(tab => {
+  tab.el.addEventListener("click", () => {
+    currentTab = tab.id as any;
+    tabs.forEach(t => {
+      t.el.classList.remove("active", "border-accent", "text-foreground");
+      t.el.classList.add("border-transparent", "text-muted");
+    });
+    tab.el.classList.add("active", "border-accent", "text-foreground");
+    tab.el.classList.remove("border-transparent", "text-muted");
+    renderAll();
+  });
+});
+
+// Theme Logic
+type ThemeMode = "light" | "dark" | "system";
+let currentTheme: ThemeMode = (localStorage.getItem("stonks-theme") as ThemeMode) || "system";
+
+function applyTheme(theme: ThemeMode) {
+  currentTheme = theme;
+  localStorage.setItem("stonks-theme", theme);
+
+  themeLight.classList.remove("active", "text-foreground");
+  themeDark.classList.remove("active", "text-foreground");
+  themeSystem.classList.remove("active", "text-foreground");
+
+  if (theme === "light") {
+    document.documentElement.classList.remove("dark");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#f4f4f5");
+    themeLight.classList.add("active", "text-foreground");
+  } else if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#09090b");
+    themeDark.classList.add("active", "text-foreground");
+  } else {
+    themeSystem.classList.add("active", "text-foreground");
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      document.documentElement.classList.add("dark");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#09090b");
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#f4f4f5");
+    }
+  }
+}
+
+themeLight.addEventListener("click", () => applyTheme("light"));
+themeDark.addEventListener("click", () => applyTheme("dark"));
+themeSystem.addEventListener("click", () => applyTheme("system"));
+
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener('change', (e) => {
+  if (currentTheme === "system") {
+    applyTheme("system");
+  }
+});
+
+applyTheme(currentTheme);
 
 // ---------- init ----------
 const saved = loadTickers();
