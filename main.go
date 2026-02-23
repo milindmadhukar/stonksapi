@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -23,23 +21,21 @@ func main() {
 	// Loading the env file.
 	godotenv.Load(".env")
 
-	port := os.Getenv("PORT")
-
-	if port == "" {
-		log.Fatal("Could not find a port to run the server.")
-		return
-	}
+	// Load configuration from environment.
+	cfg := LoadConfig()
 
 	// Declaring the colly collector and setting its configurations.
 	collector = colly.NewCollector(
-		colly.AllowedDomains("google.com", "www.google.com", "finance.google.com"),
+		colly.AllowedDomains("google.com", "www.google.com"),
 		colly.MaxDepth(2),
 		colly.Async(true),
 		colly.AllowURLRevisit(),
-		// colly.CacheDir("./cached_files"),
 	)
 
-	collector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+	collector.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		Parallelism: cfg.ScraperParallelism,
+	})
 
 	// Initialing the chi router.
 	r := chi.NewRouter()
@@ -57,12 +53,14 @@ func main() {
 	}))
 
 	// Adding HTTP rate limit on IP.
-	r.Use(httprate.LimitByIP(30, 1*time.Minute))
+	r.Use(httprate.LimitByIP(cfg.RateLimitRequests, cfg.RateLimitWindow))
 
 	// Homepage
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Stonks API!"))
 	})
+	// Stock Search
+	r.Get("/stocks/search/{query}", searchStocks)
 	// Stock Stats
 	r.Get("/stocks/{stock_query}", getStockStats)
 	// Stock News
@@ -71,9 +69,18 @@ func main() {
 	r.Get("/crypto/{crypto_name}:{crypto_currency}", getCryptoData)
 	// Crypto News
 	// r.Get("/crypto/news/{crypto_name}:{crypto_currency}", getCryptoNews)
-	log.Println("Starting the server and listening at Port: ", port)
 
-	http.ListenAndServe(fmt.Sprintf(":%s", port), r)
+	// WebSocket hub for live updates.
+	hub := NewHub(collector, cfg)
+	go hub.Run()
+
+	// WebSocket endpoint
+	r.Get("/ws", hub.ServeWs)
+
+	log.Printf("Starting the server on port %s (poll_workers=%d, poll_interval=%s, scraper_parallelism=%d)",
+		cfg.Port, cfg.PollWorkers, cfg.PollInterval, cfg.ScraperParallelism)
+
+	http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), r)
 }
 
 func getStockStats(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +129,21 @@ func getCryptoData(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "    ")
 	enc.Encode(*crypto_data)
+}
+
+func searchStocks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	results := Search_Stocks(collector, chi.URLParam(r, "query"))
+
+	if len(*results) == 0 {
+		w.WriteHeader(404)
+		w.Write([]byte(fmt.Sprintf("No results found for '%s'.", chi.URLParam(r, "query"))))
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "    ")
+	enc.Encode(*results)
 }
 
 func getCryptoNews(w http.ResponseWriter, r *http.Request) {

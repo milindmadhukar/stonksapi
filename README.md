@@ -1,20 +1,23 @@
 # Stonks API!
 
-A WIP  API which scrapes [Google Finance](https://finance.google.com) to provide with stocks and crypto data and news.
+A WIP  API which scrapes [Google Finance](https://www.google.com/finance) to provide with stocks and crypto data and news.
 
 
 ## 💻 Endpoints
-1. `/stocks/{stock_query}` - Provides the current price, previous close, market cap and more.
-1. `/stocks/news/{stock_query}` - Provides latest news of the given stock.
+1. `/stocks/{symbol}:{exchange}` - Provides the current price, previous close, market cap and more.
+1. `/stocks/news/{symbol}:{exchange}` - Provides latest news of the given stock.
 1. `/crypto/{crypto_name}:{currency}` - Provides current price, change, previous close and more.
+1. `/ws` - WebSocket endpoint for live stock/crypto price updates (see [WebSocket docs](#websocket--live-updates)).
 
 ## ️️🛠️ Tools Used
 
 This project was written in `Golang`
 
-The API scrapes [Google Finance](https://finance.google.com) using a module called as [Colly](https://github.com/gocolly/colly). 
+The API scrapes [Google Finance](https://www.google.com/finance) using a module called as [Colly](https://github.com/gocolly/colly). 
 
 The API uses [Chi](https://github.com/go-chi/chi) as a router for all its routes.
+
+Real-time updates are served over WebSocket using [Gorilla WebSocket](https://github.com/gorilla/websocket).
 
 ## ⛏️  Local Setup
 
@@ -30,78 +33,222 @@ PORT = 8000
 
 ## 🏁 Examples:
 
-**Request url :** `/stocks/tesla` <br>
+**Request url :** `/stocks/TSLA:NASDAQ` <br>
 **Response :** 
 ```json
 {
     "stockName": "Tesla Inc",
-    "price": 733.57,
-    "previousClose": 732.39,
-    "change": 1.1799927,
-    "changePercent": 0.16111533,
-    "dayRange": "$724.20 - $734.00",
-    "yearRange": "$329.88 - $900.40",
-    "volume": "18.58M",
-    "marketCap": "726.25B USD",
-    "peRatio": 383.59,
+    "price": 398.41,
+    "previousClose": 411.82,
+    "change": -13.41,
+    "changePercent": -3.26,
+    "dayRange": "$396.62 - $407.70",
+    "yearRange": "$214.25 - $498.82",
+    "volume": "60.08M",
+    "marketCap": "1.25T USD",
+    "peRatio": 370.57,
     "primaryExchange": "NASDAQ"
 }
 ```
 
-**Request url :** `/stocks/news/apple` <br>
+**Request url :** `/stocks/news/AAPL:NASDAQ` <br>
 **Response :** 
 ```json
 [
     {
-        "title": "10 Reddit YOLO Stocks That Are Losing Ground",
+        "title": "Apple's Stock Recovery Is No Recovery At All",
         "source": "Yahoo Finance",
-        "articleLink": "https://finance.yahoo.com/news/10-reddit-yolo-stocks-losing-130727617.html",
+        "articleLink": "https://finance.yahoo.com/news/apples-stock-recovery-is-no-recovery-at-all.html",
         "thumbnailLink": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcSRLibE2XfHF1Tnwv3t27GIcmRnAElmVPGkqW2lvfYSZ3TU10TMa7ZMFqOT9jk"
-    },
-    {
-        "title": "Apple's stock rises toward another record after Wedbush's Ives sees \ncontinued 'strong' demand for iPhones",
-        "source": "MarketWatch",
-        "articleLink": "https://www.marketwatch.com/story/apples-stock-rises-toward-another-record-after-webushs-ives-sees-continued-strong-demand-for-iphones-2021-09-03",
-        "thumbnailLink": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTC4JVI8pP1CiZOKOYme5sBe6WyQL6Z6ouRS15GhIqzkHMftIZNVWHWBFdBPr0"
-    },
-    {
-        "title": "Apple's strategy to fight off antitrust regulators: Fix the App Store one \nrule at a time",
-        "source": "CNBC",
-        "articleLink": "https://www.cnbc.com/2021/09/05/history-of-apple-giving-ground-on-app-store-rules.html",
-        "thumbnailLink": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRXx9qr-OikwQ7z5jjfTDg2Q77Ah6HjUGQvF-Uh72M90lMxCOyRhBvSRJ3ysaU"
-    },
-    {
-        "title": "New iPhone 13 buzz gives Apple stock a lift",
-        "source": "Fox Business",
-        "articleLink": "https://www.foxbusiness.com/markets/apple-iphone13-stock-record-tim-cook",
-        "thumbnailLink": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTnAnkCG1x8khQYSoht_2nLOKX28IxHBob7kkC6zMUW2hKWRnlZe9Wi8XAQc5o"
-    },
-    {
-        "title": "Tim Cook gets letter from Apple employees demanding changes",
-        "source": "Fox Business",
-        "articleLink": "https://www.foxbusiness.com/technology/tim-cook-gets-letter-from-apple-employees",
-        "thumbnailLink": "https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcQUSf6COE3uLOMFy0Mfk2NVGQQr_cNW8RwcWuGseq1B09o0pwBsSue9tyYlocI"
-    },
-    {
-        "title": "Apple Should Shed Google and Build Its Own Search Engine",
-        "source": "Bloomberg.com",
-        "articleLink": "https://www.bloomberg.com/opinion/articles/2021-09-03/fully-charged-apple-should-shed-google-and-build-its-own-search-engine",
-        "thumbnailLink": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-KT2enBY6WpZ7olWllovEHcsDdjOJLVthA3MV_QogNj6kDlmeFwCjR3JWtgM"
     }
 ]
 ```
 
-**Request url :** `/crypto/btc:usd` <br>
+**Request url :** `/crypto/BTC:USD` <br>
 **Response :** 
 ```json
 {
-    "crypto_name": "BTC / USD",
-    "price": 51680.1,
-    "previous_close": 51751.5,
-    "change": -71.39844,
-    "change_percent": -0.137964
+    "cryptoName": "Bitcoin (BTC / USD)",
+    "price": 65412.06,
+    "previousClose": 67668.43,
+    "change": -2256.37,
+    "changePercent": -3.33
 }
 ```
+
+## WebSocket – Live Updates
+
+### Overview
+
+The `/ws` endpoint provides a persistent WebSocket connection for receiving real-time stock and crypto price updates. The server maintains an in-memory store of all subscribed tickers. A background poller scrapes fresh data every 5 seconds and pushes updates to connected clients **only when values change**.
+
+**Architecture:**
+
+```
+Client A ──┐                  ┌── Google Finance
+Client B ──┤◄──► Hub (state) ─┤   (scraper)
+Client C ──┘                  └── polls every 5s
+```
+
+- All state is **in-memory only** (no persistence).
+- Tickers are only polled while at least one client is subscribed to them.
+- When the last subscriber for a ticker disconnects or unsubscribes, the ticker is removed from the store and polling stops for it.
+
+### Connecting
+
+```
+ws://localhost:8084/ws
+```
+
+No authentication is required. The connection is upgraded from a standard HTTP GET request.
+
+### Client Messages (you send)
+
+All messages are JSON with two fields:
+
+| Field    | Type   | Description |
+|----------|--------|-------------|
+| `action` | string | `"subscribe"` or `"unsubscribe"` |
+| `ticker` | string | Ticker identifier (see format below) |
+
+**Ticker format:**
+- Stocks: `SYMBOL:EXCHANGE` (e.g. `TSLA:NASDAQ`, `PAYTM:NSE`, `AAPL:NASDAQ`)
+- Crypto: `NAME-CURRENCY` (e.g. `BTC-USD`, `ETH-USD`)
+
+**Subscribe example:**
+```json
+{"action": "subscribe", "ticker": "TSLA:NASDAQ"}
+```
+
+**Unsubscribe example:**
+```json
+{"action": "unsubscribe", "ticker": "TSLA:NASDAQ"}
+```
+
+You can subscribe to multiple tickers by sending multiple subscribe messages.
+
+### Server Messages (you receive)
+
+All server messages are JSON with this shape:
+
+| Field       | Type   | Description |
+|-------------|--------|-------------|
+| `type`      | string | Message type (see below) |
+| `ticker`    | string | The ticker this message relates to |
+| `data`      | object | The full stock/crypto data (on updates) |
+| `error`     | string | Error description (on errors) |
+| `timestamp` | string | ISO 8601 timestamp of the event |
+
+**Message types:**
+
+| Type             | When sent |
+|------------------|-----------|
+| `subscribed`     | Acknowledgement after a successful subscribe |
+| `unsubscribed`   | Acknowledgement after a successful unsubscribe |
+| `stock_update`   | Stock data changed (pushed automatically) |
+| `crypto_update`  | Crypto data changed (pushed automatically) |
+| `error`          | Invalid message format or unknown action |
+
+### Data Payloads
+
+**`stock_update` data:**
+```json
+{
+    "type": "stock_update",
+    "ticker": "TSLA:NASDAQ",
+    "data": {
+        "stockName": "Tesla Inc",
+        "price": 398.41,
+        "previousClose": 411.82,
+        "change": -13.41,
+        "changePercent": -3.26,
+        "dayRange": "$396.62 - $407.70",
+        "yearRange": "$214.25 - $498.82",
+        "volume": "60.08M",
+        "marketCap": "1.25T USD",
+        "peRatio": 370.57,
+        "primaryExchange": "NASDAQ"
+    },
+    "timestamp": "2026-02-23T12:00:05Z"
+}
+```
+
+**`crypto_update` data:**
+```json
+{
+    "type": "crypto_update",
+    "ticker": "BTC-USD",
+    "data": {
+        "cryptoName": "Bitcoin (BTC / USD)",
+        "price": 65412.06,
+        "previousClose": 67668.43,
+        "change": -2256.37,
+        "changePercent": -3.33
+    },
+    "timestamp": "2026-02-23T12:00:05Z"
+}
+```
+
+### Full Client Example (JavaScript)
+
+```javascript
+const ws = new WebSocket("ws://localhost:8084/ws");
+
+ws.onopen = () => {
+    console.log("Connected to StonksAPI");
+
+    // Subscribe to stocks and crypto
+    ws.send(JSON.stringify({ action: "subscribe", ticker: "TSLA:NASDAQ" }));
+    ws.send(JSON.stringify({ action: "subscribe", ticker: "AAPL:NASDAQ" }));
+    ws.send(JSON.stringify({ action: "subscribe", ticker: "BTC-USD" }));
+};
+
+ws.onmessage = (event) => {
+    // Note: multiple JSON messages may arrive newline-delimited in a
+    // single WebSocket frame when the server batches queued updates.
+    const parts = event.data.split("\n");
+    for (const part of parts) {
+        const msg = JSON.parse(part);
+
+        switch (msg.type) {
+            case "subscribed":
+                console.log(`Subscribed to ${msg.ticker}`);
+                break;
+            case "stock_update":
+                // Update your dashboard with msg.data
+                console.log(`${msg.ticker}: $${msg.data.price} (${msg.data.changePercent}%)`);
+                break;
+            case "crypto_update":
+                console.log(`${msg.ticker}: $${msg.data.price} (${msg.data.changePercent}%)`);
+                break;
+            case "error":
+                console.error(`Error: ${msg.error}`);
+                break;
+        }
+    }
+};
+
+ws.onclose = () => {
+    console.log("Disconnected – implement reconnection logic here");
+};
+```
+
+### Dashboard Integration Notes
+
+- **Initial data**: On subscribe, if the server already has data for that ticker (another client subscribed earlier), it is sent immediately. Otherwise the first update arrives after the next poll cycle (~5 seconds).
+- **Change detection**: The server only pushes when scraped data differs from the stored value, so idle tickers produce no traffic.
+- **Reconnection**: The server does not persist subscriptions. On reconnect, clients must re-subscribe to all tickers.
+- **Ping/pong**: The server sends WebSocket pings every ~54 seconds. Clients that don't respond with a pong within 60 seconds are disconnected. Standard WebSocket libraries handle this automatically.
+- **Multiple messages per frame**: The write pump may batch queued messages newline-delimited in a single frame. Split on `\n` before parsing JSON.
+
+## 🧪 Tests
+
+Run the test suite to verify the scraper is working correctly:
+```bash
+go test -v -timeout 60s ./...
+```
+
+> **Note:** Tests scrape live Google Finance pages, so they require internet access. If Google changes their HTML structure, tests will fail — this is by design to detect breakages early.
 
 ## 🧿 Extras
 

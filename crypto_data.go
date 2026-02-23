@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -25,29 +24,42 @@ type Crypto_News struct {
 
 func Get_Crypto_Data(collector *colly.Collector, crypto_name, crypto_currency string) *Crypto_Key_Stats {
 
-	url := fmt.Sprintf("https://www.google.com/finance/quote/%s-%s", crypto_name, crypto_currency)
+	url := "https://www.google.com/finance/quote/" + crypto_name + "-" + crypto_currency
 
 	var name string
 	var price, previousClose float32
 
-	collector.Visit(url)
-
-	collector.OnHTML(".zzDege", func(element *colly.HTMLElement) {
+	collector.OnHTML("div.zzDege", func(element *colly.HTMLElement) {
 		name = element.Text
-	})
-
-	collector.OnHTML("div.P6K39c", func(element *colly.HTMLElement) {
-		text := strings.ReplaceAll(element.Text, ",", "")
-		value, _ := strconv.ParseFloat(text, 32)
-		previousClose = float32(value)
 	})
 
 	collector.OnHTML("div.YMlKec.fxKbKc", func(element *colly.HTMLElement) {
 		text := strings.ReplaceAll(element.Text, ",", "")
+		// Strip leading currency symbol
+		runes := []rune(text)
+		for i, r := range runes {
+			if (r >= '0' && r <= '9') || r == '.' || r == '-' {
+				text = string(runes[i:])
+				break
+			}
+		}
 		value, _ := strconv.ParseFloat(text, 32)
 		price = float32(value)
 	})
 
+	// Extract previous close from the stats rows
+	collector.OnHTML("div.gyFHrc", func(element *colly.HTMLElement) {
+		label := element.ChildText("div.mfs7Fc")
+		value := element.ChildText("div.P6K39c")
+
+		if label == "Previous close" {
+			cleanVal := strings.ReplaceAll(value, ",", "")
+			v, _ := strconv.ParseFloat(cleanVal, 32)
+			previousClose = float32(v)
+		}
+	})
+
+	collector.Visit(url)
 	collector.Wait()
 
 	if name == "" {
@@ -67,17 +79,15 @@ func Get_Crypto_Data(collector *colly.Collector, crypto_name, crypto_currency st
 
 func Get_Crypto_News(collector *colly.Collector, crypto_name, crypto_currency string) *[]Crypto_News {
 
-	url := fmt.Sprintf("https://www.google.com/finance/quote/%s-%s", crypto_name, crypto_currency)
-	var title, source, articleLink, thumbnailLink string
+	url := "https://www.google.com/finance/quote/" + crypto_name + "-" + crypto_currency
+
 	allNews := make([]Crypto_News, 0)
 
-	collector.Visit(url)
-
 	collector.OnHTML("div.nkXTJ", func(element *colly.HTMLElement) {
-		title = element.ChildText("div.AoCdqe")
-		source = element.ChildText("div.nkXTJ.W8knGc > div.sfyJob")
-		articleLink = element.ChildAttr("div.z4rs2b > a:nth-child(1)", "href")
-		thumbnailLink = element.ChildAttr("img.PgYz9d", "src")
+		title := element.ChildText("div.Yfwt5")
+		source := element.ChildText("div.sfyJob")
+		articleLink := element.ChildAttr("a", "href")
+		thumbnailLink := element.ChildAttr("img.Z4idke", "src")
 
 		if title == "" {
 			return
@@ -87,9 +97,11 @@ func Get_Crypto_News(collector *colly.Collector, crypto_name, crypto_currency st
 			Title:          title,
 			Source:         source,
 			ArticleLink:    articleLink,
-			Thumbnail_Link: thumbnailLink})
+			Thumbnail_Link: thumbnailLink,
+		})
 	})
 
+	collector.Visit(url)
 	collector.Wait()
 
 	return &allNews
