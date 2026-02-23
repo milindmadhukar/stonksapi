@@ -1,6 +1,6 @@
 # Stonks API!
 
-A WIP  API which scrapes [Google Finance](https://www.google.com/finance) to provide with stocks and crypto data and news.
+API + Dashboard which scrapes [Google Finance](https://www.google.com/finance) to provide with stocks and crypto data and news.
 
 This is a monorepo containing both the **API** and the **Dashboard**.
 
