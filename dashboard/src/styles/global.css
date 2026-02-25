@@ -10,7 +10,8 @@ html {
 body {
   touch-action: manipulation;
   overscroll-behavior: none;
-  /* Safe area insets for notched devices */
+  /* Safe area insets for notched / Dynamic Island devices */
+  padding-top: env(safe-area-inset-top);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);

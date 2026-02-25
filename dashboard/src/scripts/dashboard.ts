@@ -347,7 +347,24 @@ function getTickerExchange(t: TrackedTicker): string {
 
 function getActiveExchanges(): string[] {
   const exchanges = new Set<string>();
-  for (const t of tickers.values()) exchanges.add(getTickerExchange(t));
+
+  // Collect exchanges only from tickers visible in the current tab
+  if (currentTab === "all" || currentTab === "indices") {
+    for (const t of indices.values()) exchanges.add(getTickerExchange(t));
+  }
+  if (currentTab === "all" || currentTab === "stocks") {
+    for (const t of tickers.values()) {
+      if ((t.kind === "stock" || t.kind === "unknown") && !isIndex(t.ticker)) {
+        exchanges.add(getTickerExchange(t));
+      }
+    }
+  }
+  if (currentTab === "all" || currentTab === "crypto") {
+    for (const t of tickers.values()) {
+      if (t.kind === "crypto") exchanges.add(getTickerExchange(t));
+    }
+  }
+
   return Array.from(exchanges).sort();
 }
 
@@ -360,12 +377,30 @@ function updateFilterOptions(): void {
     opt.textContent = ex;
     filterSelect.appendChild(opt);
   }
-  // Restore saved filter if the exchange still exists
+  // Restore saved filter if the exchange still exists in the current tab context
   if (currentFilter === "ALL" || exchanges.includes(currentFilter)) {
     filterSelect.value = currentFilter;
   } else {
     filterSelect.value = "ALL";
     currentFilter = "ALL";
+  }
+}
+
+function updateSortOptions(): void {
+  const marketCapOpt = sortSelect.querySelector<HTMLOptionElement>('option[value="marketcap"]');
+  const volumeOpt = sortSelect.querySelector<HTMLOptionElement>('option[value="volume"]');
+
+  // Market Cap and Volume only apply to stocks
+  const showStockSorts = currentTab === "all" || currentTab === "stocks";
+
+  if (marketCapOpt) marketCapOpt.hidden = !showStockSorts;
+  if (volumeOpt) volumeOpt.hidden = !showStockSorts;
+
+  // If current sort is hidden, fall back to custom
+  if (!showStockSorts && (currentSort === "marketcap" || currentSort === "volume")) {
+    currentSort = "custom";
+    sortSelect.value = "custom";
+    savePrefs();
   }
 }
 
@@ -740,6 +775,7 @@ function renderListRow(t: TrackedTicker): string {
 
 function renderAll(): void {
   updateFilterOptions();
+  updateSortOptions();
   const ordered = getFilteredSortedTickers();
 
   if (currentView === "card") {
@@ -1379,6 +1415,10 @@ const tabs = [
 tabs.forEach(tab => {
   tab.el.addEventListener("click", () => {
     currentTab = tab.id as any;
+    // Reset filter when switching tabs since available exchanges change per tab
+    currentFilter = "ALL";
+    filterSelect.value = "ALL";
+    savePrefs();
     tabs.forEach(t => {
       t.el.classList.remove("active", "border-accent", "text-foreground");
       t.el.classList.add("border-transparent", "text-muted");
