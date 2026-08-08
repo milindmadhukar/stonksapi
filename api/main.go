@@ -17,6 +17,26 @@ import (
 // Global initialization of Colly collector.
 var collector *colly.Collector
 
+// clientIPKey buckets the rate limiter by real client rather than by whoever
+// last forwarded the request.
+//
+// httprate.LimitByIP keys on RemoteAddr, which behind a reverse proxy is the
+// proxy's own container address -- identical for every caller on the internet.
+// That turns "N requests per minute per IP" into "N per minute in total", and a
+// single vulnerability scanner walking the domain is enough to 429 everyone.
+//
+// CF-Connecting-IP is used in preference to X-Forwarded-For because Cloudflare
+// overwrites it on every request, whereas XFF is caller-supplied and merely
+// appended to -- trusting the first XFF entry would let anyone forge their
+// bucket and evade the limit. If the header is absent (a direct hit on the
+// origin, or local development) fall back to the socket address.
+func clientIPKey(r *http.Request) (string, error) {
+	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
+		return ip, nil
+	}
+	return httprate.KeyByIP(r)
+}
+
 func main() {
 	// Loading the env file.
 	godotenv.Load(".env")
@@ -62,7 +82,8 @@ func main() {
 	}))
 
 	// Adding HTTP rate limit on IP.
-	r.Use(httprate.LimitByIP(cfg.RateLimitRequests, cfg.RateLimitWindow))
+	r.Use(httprate.Limit(cfg.RateLimitRequests, cfg.RateLimitWindow,
+		httprate.WithKeyFuncs(clientIPKey)))
 
 	// Homepage
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
