@@ -21,6 +21,15 @@ type Config struct {
 	// This is the per-collector limit rule; each clone inherits it.
 	ScraperParallelism int
 
+	// ScraperUserAgent is the User-Agent sent on every scrape request.
+	// Colly's default ("colly - https://github.com/gocolly/colly/v2") is a
+	// known scraper signature: from an EU-geolocated host Google 302s it to
+	// consent.google.com with an empty body, so every lookup comes back empty.
+	// A neutral client string is served the real page. Browser-like UA strings
+	// are NOT a valid substitute -- browsers are exactly who the consent
+	// interstitial targets, so those get redirected too.
+	ScraperUserAgent string
+
 	// --------------- Poller -------------------------------------------------
 
 	// PollInterval is the delay between successive poll cycles.
@@ -66,6 +75,7 @@ func LoadConfig() *Config {
 	cfg := &Config{
 		Port:               envStr("PORT", "8084"),
 		ScraperParallelism: envInt("SCRAPER_PARALLELISM", 4),
+		ScraperUserAgent:   envStr("SCRAPER_USER_AGENT", "Go-http-client/2.0"),
 		PollInterval:       envDuration("POLL_INTERVAL", 5*time.Second),
 		PollWorkers:        envInt("POLL_WORKERS", 10),
 		WSWriteBufferSize:  envInt("WS_WRITE_BUFFER_SIZE", 1024),

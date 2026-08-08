@@ -1,0 +1,54 @@
+# Development stack: builds both images from source and publishes them on
+# localhost with no reverse proxy involved.
+#
+#   dashboard -> http://localhost:4321  (Astro dev server, hot reload)
+#   api       -> http://localhost:8084
+#
+#   docker compose -f docker-compose.dev.yml up --build
+#
+# The dashboard runs `astro dev` against a bind mount rather than the nginx
+# runtime image, so edits under dashboard/src show up without a rebuild. The
+# production image is a static nginx build -- see docker-compose.yml.
+
+services:
+  api:
+    build:
+      context: ./api
+    container_name: stonksapi-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8084:8084"
+    networks:
+      - stonks-dev
+
+  dashboard:
+    image: oven/bun:1.3-alpine
+    container_name: stonksdash-dev
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      - api
+    environment:
+      # Host and optional port only, no scheme. The browser talks to the API
+      # directly on the published port, so this is the host's address rather
+      # than the compose service name.
+      - PUBLIC_BACKEND_URL=localhost:8084
+    volumes:
+      - ./dashboard:/app
+      # Keep container-installed dependencies out of the bind mount so a Linux
+      # container and the host can't fight over the same node_modules tree.
+      - stonks-dev-modules:/app/node_modules
+    command: sh -c "bun install && bun run dev --host 0.0.0.0"
+    ports:
+      - "4321:4321"
+    networks:
+      - stonks-dev
+
+networks:
+  stonks-dev:
+    name: stonks-dev
+
+volumes:
+  stonks-dev-modules:

@@ -311,6 +311,7 @@ func (h *Hub) pollTicker(ticker string) {
 	// Create a fresh collector clone for each scrape to avoid callback
 	// accumulation on the shared collector.
 	c := h.collector.Clone()
+	c.SetCookieJar(nil) // see the cookie-jar note in main.go
 
 	if isStockTicker(ticker) {
 		newData := Get_Stock_Data(c, ticker)

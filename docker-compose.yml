@@ -1,0 +1,61 @@
+# Production stack: pulls prebuilt images from GHCR and publishes both services
+# through the shared Traefik reverse proxy.
+#
+#   dashboard -> https://stonks.milind.dev
+#   api       -> https://stonksapi.milind.dev
+#
+# For local work use docker-compose.dev.yml, which builds from source instead.
+#
+#   docker compose pull && docker compose up -d
+
+services:
+  api:
+    image: ghcr.io/milindmadhukar/stonksapi-api:${STONKS_TAG:-latest}
+    container_name: stonksapi
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8084"
+    networks:
+      - reverse_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stonksapi.rule=Host(`stonksapi.milind.dev`)"
+      - "traefik.http.routers.stonksapi.entrypoints=web,websecure"
+      - "traefik.http.routers.stonksapi.tls=true"
+      - "traefik.http.routers.stonksapi.tls.certresolver=milindresolver"
+
+      # WebSocket upgrades pass through untouched; this only tells the app it
+      # is being served over TLS.
+      - "traefik.http.middlewares.stonksapi-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.stonksapi.middlewares=stonksapi-headers"
+
+      - "traefik.http.services.stonksapi.loadbalancer.server.port=8084"
+
+      # Pinned by digest on each deploy rather than tracked upstream.
+      - "wud.watch=false"
+
+  dashboard:
+    image: ghcr.io/milindmadhukar/stonksapi-dashboard:${STONKS_TAG:-latest}
+    container_name: stonksdash
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "80"
+    networks:
+      - reverse_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stonksdash.rule=Host(`stonks.milind.dev`)"
+      - "traefik.http.routers.stonksdash.entrypoints=web,websecure"
+      - "traefik.http.routers.stonksdash.tls=true"
+      - "traefik.http.routers.stonksdash.tls.certresolver=milindresolver"
+      - "traefik.http.services.stonksdash.loadbalancer.server.port=80"
+      - "wud.watch=false"
+
+networks:
+  reverse_proxy:
+    name: reverse_proxy
+    external: true

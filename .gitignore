@@ -29,7 +29,9 @@ dashboard/.astro/
 
 # dependencies
 dashboard/node_modules/
-dashboard/bun.lock
+# bun.lock is deliberately tracked: the Docker build runs
+# `bun install --frozen-lockfile` from a clean checkout, so an ignored lockfile
+# breaks CI and makes image builds non-reproducible.
 
 # logs
 npm-debug.log*

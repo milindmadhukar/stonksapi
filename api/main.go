@@ -30,7 +30,16 @@ func main() {
 		colly.MaxDepth(2),
 		colly.Async(true),
 		colly.AllowURLRevisit(),
+		colly.UserAgent(cfg.ScraperUserAgent),
 	)
+
+	// Run cookie-less. Colly keeps a cookie jar by default; Google's first
+	// response sets a "consent pending" SOCS cookie, and once that cookie is
+	// echoed back from an EU-geolocated host every subsequent request is 302'd
+	// to consent.google.com with an empty body. The symptom is that the first
+	// scrape after startup succeeds and every one after it returns no data.
+	// Nothing here needs session state, so drop the jar entirely.
+	collector.SetCookieJar(nil)
 
 	collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
